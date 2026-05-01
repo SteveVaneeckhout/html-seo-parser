@@ -1,0 +1,317 @@
+import { describe, it, expect } from "vitest";
+import { analyze } from "../src/index.js";
+
+const FULL_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Test Page Title</title>
+  <meta name="description" content="A test page for SEO analysis">
+  <meta name="keywords" content="seo, test, library">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="Test Author">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="rating" content="general">
+  <meta http-equiv="x-ua-compatible" content="IE=edge">
+  <meta http-equiv="refresh" content="30">
+
+  <meta property="og:title" content="OG Title">
+  <meta property="og:description" content="OG Description">
+  <meta property="og:image" content="https://example.com/image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Alt text for OG image">
+  <meta property="og:url" content="https://example.com/page">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Example Site">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="fr_FR">
+  <meta property="og:locale:alternate" content="de_DE">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Twitter Title">
+  <meta name="twitter:description" content="Twitter Description">
+  <meta name="twitter:image" content="https://example.com/twitter.jpg">
+  <meta name="twitter:image:alt" content="Twitter image alt">
+  <meta name="twitter:site" content="@examplesite">
+  <meta name="twitter:creator" content="@author">
+
+  <link rel="canonical" href="https://example.com/page">
+  <link rel="alternate" hreflang="en" href="https://example.com/en">
+  <link rel="alternate" hreflang="fr" href="https://example.com/fr">
+  <link rel="alternate" hreflang="x-default" href="https://example.com/">
+  <link rel="icon" href="/favicon.ico">
+</head>
+<body>
+  <h1>Main Heading</h1>
+  <p>Some text</p>
+  <h2>Sub Heading One</h2>
+  <p>More text</p>
+  <h3>Deep Heading</h3>
+  <h2>Sub Heading Two</h2>
+
+  <img src="/hero.jpg" alt="Hero image" title="Hero" width="800" height="400" loading="lazy">
+  <img src="/decorative.jpg" alt="" width="100" height="100">
+  <img src="/no-alt.jpg" width="50" height="50">
+
+  <a href="https://example.com/about" rel="nofollow" target="_blank">About Us</a>
+  <a href="/contact">Contact</a>
+  <a href="https://external.com" rel="nofollow noopener noreferrer">External</a>
+</body>
+</html>`;
+
+const EMPTY_HTML = `<!DOCTYPE html><html><head></head><body></body></html>`;
+
+const CHARSET_HTTP_EQUIV_HTML = `<!DOCTYPE html>
+<html><head>
+  <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+</head><body></body></html>`;
+
+const SHORTCUT_ICON_HTML = `<!DOCTYPE html>
+<html><head>
+  <link rel="shortcut icon" href="/favicon.png">
+</head><body></body></html>`;
+
+describe("analyze()", () => {
+  describe("title", () => {
+    it("extracts title text", () => {
+      expect(analyze(FULL_HTML).title).toBe("Test Page Title");
+    });
+
+    it("returns null when title is absent", () => {
+      expect(analyze(EMPTY_HTML).title).toBeNull();
+    });
+
+    it("returns null when title is whitespace-only", () => {
+      expect(analyze("<html><head><title>   </title></head><body></body></html>").title).toBeNull();
+    });
+  });
+
+  describe("meta", () => {
+    it("extracts standard meta fields", () => {
+      const { meta } = analyze(FULL_HTML);
+      expect(meta.description).toBe("A test page for SEO analysis");
+      expect(meta.keywords).toBe("seo, test, library");
+      expect(meta.robots).toBe("index, follow");
+      expect(meta.author).toBe("Test Author");
+      expect(meta.viewport).toBe("width=device-width, initial-scale=1");
+      expect(meta.referrer).toBe("no-referrer");
+      expect(meta.rating).toBe("general");
+    });
+
+    it("extracts http-equiv directives", () => {
+      const { meta } = analyze(FULL_HTML);
+      expect(meta.httpEquiv.xUaCompatible).toBe("IE=edge");
+      expect(meta.httpEquiv.refresh).toBe("30");
+      expect(meta.httpEquiv.contentType).toBeNull();
+    });
+
+    it("returns nulls for absent meta fields", () => {
+      const { meta } = analyze(EMPTY_HTML);
+      expect(meta.description).toBeNull();
+      expect(meta.keywords).toBeNull();
+      expect(meta.robots).toBeNull();
+    });
+  });
+
+  describe("openGraph", () => {
+    it("extracts all OG properties", () => {
+      const { openGraph } = analyze(FULL_HTML);
+      expect(openGraph.title).toBe("OG Title");
+      expect(openGraph.description).toBe("OG Description");
+      expect(openGraph.image).toBe("https://example.com/image.jpg");
+      expect(openGraph.imageWidth).toBe("1200");
+      expect(openGraph.imageHeight).toBe("630");
+      expect(openGraph.imageAlt).toBe("Alt text for OG image");
+      expect(openGraph.url).toBe("https://example.com/page");
+      expect(openGraph.type).toBe("website");
+      expect(openGraph.siteName).toBe("Example Site");
+      expect(openGraph.locale).toBe("en_US");
+    });
+
+    it("collects multiple og:locale:alternate values", () => {
+      expect(analyze(FULL_HTML).openGraph.localeAlternate).toEqual(["fr_FR", "de_DE"]);
+    });
+
+    it("returns empty array for localeAlternate when none exist", () => {
+      expect(analyze(EMPTY_HTML).openGraph.localeAlternate).toEqual([]);
+    });
+
+    it("filters out og:locale:alternate entries with empty or absent content", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <meta property="og:locale:alternate" content="">
+        <meta property="og:locale:alternate">
+        <meta property="og:locale:alternate" content="fr_FR">
+      </head><body></body></html>`;
+      expect(analyze(html).openGraph.localeAlternate).toEqual(["fr_FR"]);
+    });
+  });
+
+  describe("twitterCard", () => {
+    it("extracts all Twitter Card properties", () => {
+      const { twitterCard } = analyze(FULL_HTML);
+      expect(twitterCard.card).toBe("summary_large_image");
+      expect(twitterCard.title).toBe("Twitter Title");
+      expect(twitterCard.description).toBe("Twitter Description");
+      expect(twitterCard.image).toBe("https://example.com/twitter.jpg");
+      expect(twitterCard.imageAlt).toBe("Twitter image alt");
+      expect(twitterCard.site).toBe("@examplesite");
+      expect(twitterCard.creator).toBe("@author");
+    });
+  });
+
+  describe("canonical", () => {
+    it("extracts canonical URL", () => {
+      expect(analyze(FULL_HTML).canonical).toBe("https://example.com/page");
+    });
+
+    it("returns null when canonical is absent", () => {
+      expect(analyze(EMPTY_HTML).canonical).toBeNull();
+    });
+  });
+
+  describe("hreflang", () => {
+    it("extracts all hreflang entries in order", () => {
+      const { hreflang } = analyze(FULL_HTML);
+      expect(hreflang).toHaveLength(3);
+      expect(hreflang[0]).toEqual({ hreflang: "en", href: "https://example.com/en" });
+      expect(hreflang[1]).toEqual({ hreflang: "fr", href: "https://example.com/fr" });
+      expect(hreflang[2]).toEqual({ hreflang: "x-default", href: "https://example.com/" });
+    });
+
+    it("returns empty array when no hreflang links exist", () => {
+      expect(analyze(EMPTY_HTML).hreflang).toEqual([]);
+    });
+
+    it("filters out entries with empty hreflang, missing href, or empty href", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <link rel="alternate" hreflang="" href="https://example.com/">
+        <link rel="alternate" hreflang="de">
+        <link rel="alternate" hreflang="ja" href="">
+      </head><body></body></html>`;
+      expect(analyze(html).hreflang).toEqual([]);
+    });
+  });
+
+  describe("headings", () => {
+    it("extracts headings in DOM order with correct levels", () => {
+      const { headings } = analyze(FULL_HTML);
+      expect(headings).toHaveLength(4);
+      expect(headings[0]).toEqual({ level: 1, text: "Main Heading", order: 0 });
+      expect(headings[1]).toEqual({ level: 2, text: "Sub Heading One", order: 1 });
+      expect(headings[2]).toEqual({ level: 3, text: "Deep Heading", order: 2 });
+      expect(headings[3]).toEqual({ level: 2, text: "Sub Heading Two", order: 3 });
+    });
+
+    it("returns empty array when no headings exist", () => {
+      expect(analyze(EMPTY_HTML).headings).toEqual([]);
+    });
+  });
+
+  describe("images", () => {
+    it("extracts image attributes", () => {
+      const { images } = analyze(FULL_HTML);
+      expect(images).toHaveLength(3);
+      expect(images[0]).toEqual({
+        src: "/hero.jpg",
+        alt: "Hero image",
+        title: "Hero",
+        width: "800",
+        height: "400",
+        loading: "lazy",
+      });
+    });
+
+    it("preserves empty alt string for decorative images", () => {
+      expect(analyze(FULL_HTML).images[1]?.alt).toBe("");
+    });
+
+    it("returns null alt when alt attribute is absent", () => {
+      expect(analyze(FULL_HTML).images[2]?.alt).toBeNull();
+    });
+
+    it("returns null for all absent attributes on a bare img", () => {
+      const { images } = analyze("<html><head></head><body><img></body></html>");
+      expect(images[0]).toEqual({
+        src: null,
+        alt: null,
+        title: null,
+        width: null,
+        height: null,
+        loading: null,
+      });
+    });
+  });
+
+  describe("links", () => {
+    it("extracts link attributes", () => {
+      const { links } = analyze(FULL_HTML);
+      expect(links).toHaveLength(3);
+      expect(links[0]).toEqual({
+        href: "https://example.com/about",
+        rel: "nofollow",
+        text: "About Us",
+        target: "_blank",
+      });
+      expect(links[1]).toEqual({
+        href: "/contact",
+        rel: null,
+        text: "Contact",
+        target: null,
+      });
+      expect(links[2]).toMatchObject({ rel: "nofollow noopener noreferrer" });
+    });
+
+    it("returns null text for links with no text content", () => {
+      const { links } = analyze(
+        '<html><head></head><body><a href="/icon"><img src="x.png" alt="icon"></a></body></html>',
+      );
+      expect(links[0]?.text).toBeNull();
+    });
+  });
+
+  describe("language", () => {
+    it("extracts lang attribute from html element", () => {
+      expect(analyze(FULL_HTML).language).toBe("en");
+    });
+
+    it("returns null when lang is absent", () => {
+      expect(analyze(EMPTY_HTML).language).toBeNull();
+    });
+  });
+
+  describe("charset", () => {
+    it("extracts charset from meta charset attribute", () => {
+      expect(analyze(FULL_HTML).charset).toBe("utf-8");
+    });
+
+    it("extracts charset from http-equiv content-type", () => {
+      expect(analyze(CHARSET_HTTP_EQUIV_HTML).charset).toBe("ISO-8859-1");
+    });
+
+    it("returns null when charset is absent", () => {
+      expect(analyze(EMPTY_HTML).charset).toBeNull();
+    });
+
+    it("returns null when http-equiv content-type has no charset parameter", () => {
+      const html =
+        '<html><head><meta http-equiv="content-type" content="text/html"></head><body></body></html>';
+      expect(analyze(html).charset).toBeNull();
+    });
+  });
+
+  describe("favicon", () => {
+    it('extracts favicon from link rel="icon"', () => {
+      expect(analyze(FULL_HTML).favicon).toBe("/favicon.ico");
+    });
+
+    it('extracts favicon from link rel="shortcut icon"', () => {
+      expect(analyze(SHORTCUT_ICON_HTML).favicon).toBe("/favicon.png");
+    });
+
+    it("returns null when favicon is absent", () => {
+      expect(analyze(EMPTY_HTML).favicon).toBeNull();
+    });
+  });
+});

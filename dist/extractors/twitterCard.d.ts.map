@@ -1,0 +1,1 @@
+{"version":3,"file":"twitterCard.d.ts","sourceRoot":"","sources":["../../src/extractors/twitterCard.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,SAAS,CAAC;AAC1C,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,aAAa,CAAC;AAOnD,wBAAgB,kBAAkB,CAAC,CAAC,EAAE,UAAU,GAAG,eAAe,CAUjE"}
