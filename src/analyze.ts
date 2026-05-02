@@ -12,6 +12,7 @@ import { extractLinks } from "./extractors/links.js";
 import { extractLanguage } from "./extractors/language.js";
 import { extractCharset } from "./extractors/charset.js";
 import { extractFavicon } from "./extractors/favicon.js";
+import { extractManifest } from "./extractors/manifest.js";
 import { extractStructuredData } from "./extractors/structuredData.js";
 
 export function analyze(html: string): SeoData {
@@ -30,6 +31,7 @@ export function analyze(html: string): SeoData {
     language: extractLanguage($),
     charset: extractCharset($),
     favicon: extractFavicon($),
+    manifestUrl: extractManifest($),
     structuredData: extractStructuredData($),
   };
 }

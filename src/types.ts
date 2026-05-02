@@ -101,5 +101,6 @@ export interface SeoData {
   language: string | null;
   charset: string | null;
   favicon: string | null;
+  manifestUrl: string | null;
   structuredData: StructuredData;
 }

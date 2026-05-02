@@ -42,6 +42,7 @@ const FULL_HTML = `<!DOCTYPE html>
   <link rel="alternate" hreflang="fr" href="https://example.com/fr">
   <link rel="alternate" hreflang="x-default" href="https://example.com/">
   <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/site.webmanifest">
 </head>
 <body>
   <h1>Main Heading</h1>
@@ -312,6 +313,21 @@ describe("analyze()", () => {
 
     it("returns null when favicon is absent", () => {
       expect(analyze(EMPTY_HTML).favicon).toBeNull();
+    });
+  });
+
+  describe("manifestUrl", () => {
+    it("extracts manifest URL from link rel=manifest", () => {
+      expect(analyze(FULL_HTML).manifestUrl).toBe("/site.webmanifest");
+    });
+
+    it("returns null when manifest link is absent", () => {
+      expect(analyze(EMPTY_HTML).manifestUrl).toBeNull();
+    });
+
+    it("returns null when href is empty or whitespace-only", () => {
+      const html = `<!DOCTYPE html><html><head><link rel="manifest" href="  "></head><body></body></html>`;
+      expect(analyze(html).manifestUrl).toBeNull();
     });
   });
 
