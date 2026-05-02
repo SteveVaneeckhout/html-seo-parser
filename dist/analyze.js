@@ -11,6 +11,7 @@ import { extractLinks } from "./extractors/links.js";
 import { extractLanguage } from "./extractors/language.js";
 import { extractCharset } from "./extractors/charset.js";
 import { extractFavicon } from "./extractors/favicon.js";
+import { extractStructuredData } from "./extractors/structuredData.js";
 export function analyze(html) {
   const $ = load(html);
   return {
@@ -26,5 +27,6 @@ export function analyze(html) {
     language: extractLanguage($),
     charset: extractCharset($),
     favicon: extractFavicon($),
+    structuredData: extractStructuredData($),
   };
 }

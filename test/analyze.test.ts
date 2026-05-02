@@ -314,4 +314,40 @@ describe("analyze()", () => {
       expect(analyze(EMPTY_HTML).favicon).toBeNull();
     });
   });
+
+  describe("structuredData", () => {
+    const ALL_THREE_HTML = `<!DOCTYPE html>
+<html>
+<head>
+  <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"Article","headline":"JSON-LD Article"}
+  </script>
+</head>
+<body>
+  <div itemscope itemtype="https://schema.org/Person">
+    <span itemprop="name">Microdata Ada</span>
+  </div>
+  <div vocab="https://schema.org/" typeof="Organization">
+    <span property="name">RDFa Org</span>
+  </div>
+</body>
+</html>`;
+
+    it("populates all three buckets when each format is present", () => {
+      const { structuredData } = analyze(ALL_THREE_HTML);
+      expect(structuredData.jsonLd).toHaveLength(1);
+      expect(structuredData.jsonLd[0]?.["@type"]).toBe("Article");
+      expect(structuredData.microdata).toHaveLength(1);
+      expect(structuredData.microdata[0]?.["@type"]).toBe("https://schema.org/Person");
+      expect(structuredData.rdfa).toHaveLength(1);
+      expect(structuredData.rdfa[0]?.["@type"]).toBe("https://schema.org/Organization");
+    });
+
+    it("returns empty buckets on plain HTML", () => {
+      const { structuredData } = analyze(EMPTY_HTML);
+      expect(structuredData.jsonLd).toEqual([]);
+      expect(structuredData.microdata).toEqual([]);
+      expect(structuredData.rdfa).toEqual([]);
+    });
+  });
 });

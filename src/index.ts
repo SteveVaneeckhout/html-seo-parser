@@ -1,4 +1,10 @@
 export { analyze } from "./analyze.js";
+export {
+  flattenStructuredData,
+  flattenGraph,
+  type FlattenedItem,
+  type StructuredDataSource,
+} from "./structuredData/helpers.js";
 export type {
   SeoData,
   MetaData,
@@ -9,4 +15,7 @@ export type {
   HeadingEntry,
   ImageEntry,
   LinkEntry,
+  StructuredData,
+  StructuredDataItem,
+  StructuredDataValue,
 } from "./types.js";

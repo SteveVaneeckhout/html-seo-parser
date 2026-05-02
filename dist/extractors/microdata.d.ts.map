@@ -1,0 +1,1 @@
+{"version":3,"file":"microdata.d.ts","sourceRoot":"","sources":["../../src/extractors/microdata.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,SAAS,CAAC;AAE1C,OAAO,KAAK,EAAE,kBAAkB,EAAuB,MAAM,aAAa,CAAC;AAE3E,wBAAgB,gBAAgB,CAAC,CAAC,EAAE,UAAU,GAAG,kBAAkB,EAAE,CAMpE"}

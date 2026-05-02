@@ -45,20 +45,21 @@ Parses the HTML string and returns a [`SeoData`](#seedata) object. Synchronous.
 
 ### `SeoData`
 
-| Field         | Type                                  | Source                                                 |
-| ------------- | ------------------------------------- | ------------------------------------------------------ |
-| `title`       | `string \| null`                      | `<title>`                                              |
-| `meta`        | [`MetaData`](#metadata)               | `<meta name="...">` and `<meta http-equiv="...">`      |
-| `openGraph`   | [`OpenGraphData`](#opengraphdata)     | `<meta property="og:*">`                               |
-| `twitterCard` | [`TwitterCardData`](#twittercarddata) | `<meta name="twitter:*">`                              |
-| `canonical`   | `string \| null`                      | `<link rel="canonical">`                               |
-| `hreflang`    | [`HreflangEntry[]`](#hreflangentry)   | `<link rel="alternate" hreflang="...">`                |
-| `headings`    | [`HeadingEntry[]`](#headingentry)     | `<h1>` – `<h6>`                                        |
-| `images`      | [`ImageEntry[]`](#imageentry)         | `<img>`                                                |
-| `links`       | [`LinkEntry[]`](#linkentry)           | `<a href="...">`                                       |
-| `language`    | `string \| null`                      | `<html lang="...">`                                    |
-| `charset`     | `string \| null`                      | `<meta charset>` or `<meta http-equiv="content-type">` |
-| `favicon`     | `string \| null`                      | `<link rel="icon">` / `rel="shortcut icon"`            |
+| Field            | Type                                  | Source                                                 |
+| ---------------- | ------------------------------------- | ------------------------------------------------------ |
+| `title`          | `string \| null`                      | `<title>`                                              |
+| `meta`           | [`MetaData`](#metadata)               | `<meta name="...">` and `<meta http-equiv="...">`      |
+| `openGraph`      | [`OpenGraphData`](#opengraphdata)     | `<meta property="og:*">`                               |
+| `twitterCard`    | [`TwitterCardData`](#twittercarddata) | `<meta name="twitter:*">`                              |
+| `canonical`      | `string \| null`                      | `<link rel="canonical">`                               |
+| `hreflang`       | [`HreflangEntry[]`](#hreflangentry)   | `<link rel="alternate" hreflang="...">`                |
+| `headings`       | [`HeadingEntry[]`](#headingentry)     | `<h1>` – `<h6>`                                        |
+| `images`         | [`ImageEntry[]`](#imageentry)         | `<img>`                                                |
+| `links`          | [`LinkEntry[]`](#linkentry)           | `<a href="...">`                                       |
+| `language`       | `string \| null`                      | `<html lang="...">`                                    |
+| `charset`        | `string \| null`                      | `<meta charset>` or `<meta http-equiv="content-type">` |
+| `favicon`        | `string \| null`                      | `<link rel="icon">` / `rel="shortcut icon"`            |
+| `structuredData` | [`StructuredData`](#structureddata)   | JSON-LD `<script>`, microdata, RDFa                    |
 
 ### `MetaData`
 
@@ -154,10 +155,128 @@ interface LinkEntry {
 
 Only `<a href="...">` elements are included. Non-navigable anchors (no `href`) are excluded.
 
+### `StructuredData`
+
+Schema.org structured data extracted from the page, kept in three buckets corresponding to the three formats commonly used in real-world HTML:
+
+```ts
+interface StructuredData {
+  jsonLd: StructuredDataItem[];     // <script type="application/ld+json">
+  microdata: StructuredDataItem[];  // [itemscope] / itemtype / itemprop
+  rdfa: StructuredDataItem[];       // vocab / typeof / property
+}
+
+interface StructuredDataItem {
+  "@context"?: string | string[] | Record<string, unknown>;
+  "@type"?: string | string[];
+  "@id"?: string;
+  "@parseError"?: string;
+  [property: string]: /* nested item, primitive, or array thereof */ ...;
+}
+```
+
+Microdata and RDFa items are normalised to the same JSON-LD-shaped object so consumers can use a single iteration pattern across formats. **Strings are preserved verbatim**: an `itemtype="http://schema.org/Person"` lands in the result exactly as written — no `http`→`https` rewriting, no prefix stripping. The validator (below) handles Schema.org normalisation centrally.
+
+Failures are observable, not thrown:
+
+- An invalid `<script type="application/ld+json">` body produces an item with `@parseError` set instead of a parsed object — the rest of the page still parses.
+- A microdata `itemref` cycle inserts an `@parseError` item on the offending nested reference.
+
+#### RDFa coverage
+
+The RDFa extractor implements RDFa Lite plus the small set of RDFa 1.1 features that appear in real Schema.org RDFa: `vocab`, `typeof`, `property`, `resource`, `content`, `href`/`src` resolution, descendant subject inheritance, `prefix` declarations, and `rel` treated as a URI-bearing property when carrying an `href`. **Out of scope (documented limitations):** `rev`, full chaining, datatype literals, multi-pass URI/CURIE reasoning. Schema.org's own RDFa examples all fit within this subset.
+
+#### Helpers
+
+```ts
+import { flattenStructuredData, flattenGraph } from "seotest";
+
+const all = flattenStructuredData(data.structuredData);
+// Array<StructuredDataItem & { _source: "jsonLd" | "microdata" | "rdfa" }>
+
+const inlined = flattenGraph(data.structuredData.jsonLd);
+// Inlines @graph entries; passes other items through unchanged.
+```
+
+## Validation (optional)
+
+A lightweight validator built against Schema.org release 30.0 is available at the `seotest/validate` sub-path. It is opt-in and only loaded when imported, so the base bundle stays free of vocabulary data:
+
+```ts
+import { analyze } from "seotest";
+import { validate } from "seotest/validate";
+
+const data = analyze(html);
+const result = validate(data.structuredData);
+
+if (!result.valid) {
+  for (const issue of result.issues) {
+    console.warn(`[${issue.level}] ${issue.code}: ${issue.message}`, issue.path);
+  }
+}
+```
+
+`validate()` accepts a `StructuredData` buckets object, a `StructuredDataItem[]`, or a single `StructuredDataItem`. It returns:
+
+```ts
+interface ValidationResult {
+  valid: boolean; // false when any issue has level "error"
+  issues: ValidationIssue[];
+}
+
+interface ValidationIssue {
+  level: "error" | "warning" | "info";
+  code:
+    | "unknown-vocabulary"
+    | "unknown-type"
+    | "unknown-property"
+    | "property-not-in-domain"
+    | "range-mismatch";
+  path: (string | number)[]; // e.g. ["jsonLd", 0, "author", "@type"]
+  type?: string;
+  property?: string;
+  message: string;
+}
+```
+
+Pass `{ strict: true }` to promote warnings to errors (info-level issues such as `unknown-vocabulary` are not promoted).
+
+#### Namespace handling
+
+**Both `http://schema.org` and `https://schema.org` validate identically.** The validator normalises at lookup time, stripping the prefix from absolute URIs and accepting bare names that exist in the vocabulary. Items are detected as Schema.org via any of:
+
+1. `@context` is `"http://schema.org"` or `"https://schema.org"` (with optional trailing `/`)
+2. `@context` is an array containing one of those
+3. `@context` is an object whose `@vocab` is one of those
+4. `@context` is missing but `@type` is an absolute Schema.org URL (microdata/RDFa output)
+5. `@context` is missing and `@type` is a bare name that exists in the vocabulary
+
+If none of these hold, a single `info`-level `unknown-vocabulary` issue is emitted and type/property checks are skipped for that item.
+
+#### Vocabulary version
+
+The bundled vocabulary is generated from a Schema.org release. Read the active version:
+
+```ts
+import { VOCAB_VERSION } from "seotest/validate";
+console.log(VOCAB_VERSION); // "30.0"
+```
+
+To regenerate against a different release, point `scripts/build-vocab.mjs` at it:
+
+```sh
+SCHEMAORG_RELEASE_DIR=/path/to/schemaorg/data/releases/31.0 \
+SCHEMAORG_VERSIONS_JSON=/path/to/schemaorg/versions.json \
+npm run build:vocab
+```
+
+The generator reads `schemaorg-all-https-types.csv` and `schemaorg-all-https-properties.csv`, strips the `https://schema.org/` prefix, and writes `src/validate/vocab.generated.ts`. Commit the regenerated file.
+
 ## Scripts
 
 ```sh
 npm run build          # compile to dist/
+npm run build:vocab    # regenerate Schema.org vocabulary from CSVs
 npm run typecheck      # tsc --noEmit
 npm test               # vitest run
 npm run test:coverage  # vitest run --coverage

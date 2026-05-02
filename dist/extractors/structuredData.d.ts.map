@@ -1,0 +1,1 @@
+{"version":3,"file":"structuredData.d.ts","sourceRoot":"","sources":["../../src/extractors/structuredData.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,SAAS,CAAC;AAC1C,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,aAAa,CAAC;AAKlD,wBAAgB,qBAAqB,CAAC,CAAC,EAAE,UAAU,GAAG,cAAc,CAMnE"}

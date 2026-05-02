@@ -58,6 +58,25 @@ export interface LinkEntry {
   text: string | null;
   target: string | null;
 }
+export type StructuredDataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | StructuredDataItem
+  | StructuredDataValue[];
+export interface StructuredDataItem {
+  "@context"?: string | string[] | Record<string, unknown>;
+  "@type"?: string | string[];
+  "@id"?: string;
+  "@parseError"?: string;
+  [property: string]: StructuredDataValue | Record<string, unknown> | undefined;
+}
+export interface StructuredData {
+  jsonLd: StructuredDataItem[];
+  microdata: StructuredDataItem[];
+  rdfa: StructuredDataItem[];
+}
 export interface SeoData {
   title: string | null;
   meta: MetaData;
@@ -71,5 +90,6 @@ export interface SeoData {
   language: string | null;
   charset: string | null;
   favicon: string | null;
+  structuredData: StructuredData;
 }
 //# sourceMappingURL=types.d.ts.map
