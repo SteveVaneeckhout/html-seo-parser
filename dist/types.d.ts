@@ -52,6 +52,13 @@ export interface ImageEntry {
   height: string | null;
   loading: string | null;
 }
+export interface FaviconEntry {
+  href: string;
+  rel: string;
+  sizes: string | null;
+  type: string | null;
+  isDefault: boolean;
+}
 export interface LinkEntry {
   href: string;
   rel: string | null;
@@ -89,7 +96,8 @@ export interface SeoData {
   links: LinkEntry[];
   language: string | null;
   charset: string | null;
-  favicon: string | null;
+  favicons: FaviconEntry[];
+  manifestUrls: string[];
   structuredData: StructuredData;
 }
 //# sourceMappingURL=types.d.ts.map

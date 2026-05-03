@@ -112,9 +112,12 @@ function extractValue($: CheerioAPI, el: Element): string {
 }
 
 function findById($: CheerioAPI, id: string): Element | null {
-  const escaped = id.replace(/"/g, '\\"');
-  const node = $(`[id="${escaped}"]`).get(0);
-  return node !== undefined && isElement(node) ? node : null;
+  let found: Element | null = null;
+  $("[id]").each((_i, el) => {
+    if (found !== null) return;
+    if ($(el).attr("id") === id) found = el;
+  });
+  return found;
 }
 
 function splitTokens(value: string): string[] {

@@ -2,7 +2,7 @@ import type { CheerioAPI } from "cheerio";
 import type { TwitterCardData } from "../types.js";
 
 function getTwitter($: CheerioAPI, name: string): string | null {
-  const content = $(`meta[name="${name}"]`).attr("content");
+  const content = $(`meta[name="${name}" i]`).attr("content");
   return content !== undefined && content.trim().length > 0 ? content.trim() : null;
 }
 

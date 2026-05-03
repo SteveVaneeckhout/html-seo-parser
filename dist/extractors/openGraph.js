@@ -1,10 +1,10 @@
 function getOgProp($, property) {
-  const content = $(`meta[property="${property}"]`).attr("content");
+  const content = $(`meta[property="${property}" i]`).attr("content");
   return content !== undefined && content.trim().length > 0 ? content.trim() : null;
 }
 export function extractOpenGraph($) {
   const localeAlternate = [];
-  $('meta[property="og:locale:alternate"]').each((_i, el) => {
+  $('meta[property="og:locale:alternate" i]').each((_i, el) => {
     const content = $(el).attr("content");
     if (content !== undefined && content.trim().length > 0) {
       localeAlternate.push(content.trim());

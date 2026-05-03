@@ -114,6 +114,16 @@ describe("analyze()", () => {
       expect(meta.keywords).toBeNull();
       expect(meta.robots).toBeNull();
     });
+
+    it("matches meta name value case-insensitively", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <meta name="Description" content="Capitalised name value">
+        <meta name="ROBOTS" content="index, follow">
+      </head><body></body></html>`;
+      const { meta } = analyze(html);
+      expect(meta.description).toBe("Capitalised name value");
+      expect(meta.robots).toBe("index, follow");
+    });
   });
 
   describe("openGraph", () => {
@@ -302,32 +312,146 @@ describe("analyze()", () => {
     });
   });
 
-  describe("favicon", () => {
+  describe("favicons", () => {
     it('extracts favicon from link rel="icon"', () => {
-      expect(analyze(FULL_HTML).favicon).toBe("/favicon.ico");
+      const favicons = analyze(FULL_HTML).favicons;
+      const declared = favicons.find((f) => !f.isDefault);
+      expect(declared).toEqual({
+        href: "/favicon.ico",
+        rel: "icon",
+        sizes: null,
+        type: null,
+        isDefault: false,
+      });
     });
 
     it('extracts favicon from link rel="shortcut icon"', () => {
-      expect(analyze(SHORTCUT_ICON_HTML).favicon).toBe("/favicon.png");
+      const favicons = analyze(SHORTCUT_ICON_HTML).favicons;
+      const declared = favicons.find((f) => !f.isDefault);
+      expect(declared?.href).toBe("/favicon.png");
+      expect(declared?.rel).toBe("shortcut icon");
     });
 
-    it("returns null when favicon is absent", () => {
-      expect(analyze(EMPTY_HTML).favicon).toBeNull();
+    it("returns only the synthetic /favicon.ico default when no link is declared", () => {
+      const favicons = analyze(EMPTY_HTML).favicons;
+      expect(favicons).toEqual([
+        { href: "/favicon.ico", rel: "icon", sizes: null, type: null, isDefault: true },
+      ]);
+    });
+
+    it("collects multiple icon links across rel variants with sizes/type", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <link rel="icon" href="/icon-32.png" sizes="32x32" type="image/png">
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple.png">
+        <link rel="mask-icon" href="/mask.svg" color="#000">
+      </head><body></body></html>`;
+      const favicons = analyze(html).favicons;
+      // 3 declared + 1 synthetic /favicon.ico
+      expect(favicons).toHaveLength(4);
+      expect(favicons[0]).toMatchObject({
+        href: "/icon-32.png",
+        rel: "icon",
+        sizes: "32x32",
+        type: "image/png",
+        isDefault: false,
+      });
+      expect(favicons[1]).toMatchObject({ rel: "apple-touch-icon", sizes: "180x180" });
+      expect(favicons[2]).toMatchObject({ rel: "mask-icon" });
+      expect(favicons[3]).toMatchObject({ href: "/favicon.ico", isDefault: true });
+    });
+
+    it("does not duplicate the synthetic default when /favicon.ico is already declared", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <link rel="icon" href="/favicon.ico">
+      </head><body></body></html>`;
+      const favicons = analyze(html).favicons;
+      expect(favicons).toHaveLength(1);
+      expect(favicons[0]?.isDefault).toBe(false);
+    });
+
+    it("recognises absolute URLs ending in /favicon.ico as the default", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <link rel="icon" href="https://example.com/favicon.ico">
+      </head><body></body></html>`;
+      const favicons = analyze(html).favicons;
+      expect(favicons.some((f) => f.isDefault)).toBe(false);
+      expect(favicons).toHaveLength(1);
+    });
+
+    it("recognises protocol-relative and query-suffixed /favicon.ico as the default", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <link rel="icon" href="//cdn.example.com/favicon.ico?v=2">
+      </head><body></body></html>`;
+      const favicons = analyze(html).favicons;
+      expect(favicons.some((f) => f.isDefault)).toBe(false);
+      expect(favicons).toHaveLength(1);
+    });
+
+    it("does not match nested paths ending in favicon.ico", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <link rel="icon" href="/assets/favicon.ico">
+      </head><body></body></html>`;
+      const favicons = analyze(html).favicons;
+      expect(favicons).toHaveLength(2);
+      expect(favicons[0]?.href).toBe("/assets/favicon.ico");
+      expect(favicons[1]?.isDefault).toBe(true);
+    });
+
+    it("ignores link[rel] with no href attribute", () => {
+      const html = `<!DOCTYPE html><html><head><link rel="icon"></head><body></body></html>`;
+      const favicons = analyze(html).favicons;
+      expect(favicons).toEqual([
+        { href: "/favicon.ico", rel: "icon", sizes: null, type: null, isDefault: true },
+      ]);
+    });
+
+    it("ignores icon links with whitespace-only href", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <link rel="icon" href="   ">
+      </head><body></body></html>`;
+      const favicons = analyze(html).favicons;
+      expect(favicons).toEqual([
+        { href: "/favicon.ico", rel: "icon", sizes: null, type: null, isDefault: true },
+      ]);
+    });
+
+    it("ignores link[rel] tokens that are not icon-related", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <link rel="stylesheet" href="/main.css">
+        <link rel="canonical" href="/page">
+      </head><body></body></html>`;
+      const favicons = analyze(html).favicons;
+      expect(favicons).toEqual([
+        { href: "/favicon.ico", rel: "icon", sizes: null, type: null, isDefault: true },
+      ]);
     });
   });
 
-  describe("manifestUrl", () => {
+  describe("manifestUrls", () => {
     it("extracts manifest URL from link rel=manifest", () => {
-      expect(analyze(FULL_HTML).manifestUrl).toBe("/site.webmanifest");
+      expect(analyze(FULL_HTML).manifestUrls).toEqual(["/site.webmanifest"]);
     });
 
-    it("returns null when manifest link is absent", () => {
-      expect(analyze(EMPTY_HTML).manifestUrl).toBeNull();
+    it("returns empty array when manifest link is absent", () => {
+      expect(analyze(EMPTY_HTML).manifestUrls).toEqual([]);
     });
 
-    it("returns null when href is empty or whitespace-only", () => {
+    it("filters out entries where href is empty or whitespace-only", () => {
       const html = `<!DOCTYPE html><html><head><link rel="manifest" href="  "></head><body></body></html>`;
-      expect(analyze(html).manifestUrl).toBeNull();
+      expect(analyze(html).manifestUrls).toEqual([]);
+    });
+
+    it("ignores manifest links with no href attribute", () => {
+      const html = `<!DOCTYPE html><html><head><link rel="manifest"></head><body></body></html>`;
+      expect(analyze(html).manifestUrls).toEqual([]);
+    });
+
+    it("collects multiple manifest links so callers can flag the duplication", () => {
+      const html = `<!DOCTYPE html><html><head>
+        <link rel="manifest" href="/site.webmanifest">
+        <link rel="manifest" href="/other.webmanifest">
+      </head><body></body></html>`;
+      expect(analyze(html).manifestUrls).toEqual(["/site.webmanifest", "/other.webmanifest"]);
     });
   });
 

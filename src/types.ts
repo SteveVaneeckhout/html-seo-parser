@@ -59,6 +59,14 @@ export interface ImageEntry {
   loading: string | null;
 }
 
+export interface FaviconEntry {
+  href: string;
+  rel: string;
+  sizes: string | null;
+  type: string | null;
+  isDefault: boolean;
+}
+
 export interface LinkEntry {
   href: string;
   rel: string | null;
@@ -88,6 +96,13 @@ export interface StructuredData {
   rdfa: StructuredDataItem[];
 }
 
+// Trim policy
+// - SEO-level extractors (canonical, hreflang, manifest, favicon, meta, og,
+//   twitter, language, charset) trim string values and treat empty strings
+//   as absent (null / dropped from arrays).
+// - Structured-data extractors (jsonLd, microdata, rdfa) preserve attribute
+//   values verbatim — empty strings are kept so the consumer can see exactly
+//   what was on the page.
 export interface SeoData {
   title: string | null;
   meta: MetaData;
@@ -100,7 +115,7 @@ export interface SeoData {
   links: LinkEntry[];
   language: string | null;
   charset: string | null;
-  favicon: string | null;
-  manifestUrl: string | null;
+  favicons: FaviconEntry[];
+  manifestUrls: string[];
   structuredData: StructuredData;
 }

@@ -91,9 +91,12 @@ function extractValue($, el) {
   }
 }
 function findById($, id) {
-  const escaped = id.replace(/"/g, '\\"');
-  const node = $(`[id="${escaped}"]`).get(0);
-  return node !== undefined && isElement(node) ? node : null;
+  let found = null;
+  $("[id]").each((_i, el) => {
+    if (found !== null) return;
+    if ($(el).attr("id") === id) found = el;
+  });
+  return found;
 }
 function splitTokens(value) {
   return value

@@ -256,6 +256,17 @@ describe("extractMicrodata", () => {
     expect(items[0]?.["name"]).toBe("");
   });
 
+  it("resolves itemref to ids containing CSS-special characters", () => {
+    const items = extract(`
+      <p id='weird"]\\id' itemprop="description">Tricky id</p>
+      <div itemscope itemtype="https://schema.org/Person" itemref='weird"]\\id'>
+        <span itemprop="name">Ada</span>
+      </div>
+    `);
+    expect(items[0]?.["name"]).toBe("Ada");
+    expect(items[0]?.["description"]).toBe("Tricky id");
+  });
+
   it("does not double-visit elements via overlapping itemref + child traversal", () => {
     const items = extract(`
       <div itemscope itemtype="https://schema.org/Thing" itemref="inside">

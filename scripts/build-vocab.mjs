@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "csv-parse/sync";
@@ -8,30 +8,48 @@ const SCHEMA_PREFIX_RE = /^https?:\/\/schema\.org\//i;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
 
-const releaseDir =
-  process.argv[2] ??
-  process.env.SCHEMAORG_RELEASE_DIR ??
-  "C:\\Users\\zippy\\source\\repos\\schemaorg\\schemaorg\\data\\releases\\30.0";
-const versionsPath =
-  process.env.SCHEMAORG_VERSIONS_JSON ??
-  "C:\\Users\\zippy\\source\\repos\\schemaorg\\schemaorg\\versions.json";
+const SCHEMAORG_TAG = process.env.SCHEMAORG_TAG ?? "v30.0";
+const RELEASE_DIR_NAME = SCHEMAORG_TAG.replace(/^v/, "").replace(/-release$/, "");
+const RAW_BASE = `https://raw.githubusercontent.com/schemaorg/schemaorg/${SCHEMAORG_TAG}`;
 
-if (!existsSync(releaseDir)) {
-  console.error(`Schema.org release directory not found: ${releaseDir}`);
-  process.exit(1);
+const cacheDir = join(REPO_ROOT, ".cache", "schemaorg", SCHEMAORG_TAG);
+
+const files = [
+  {
+    url: `${RAW_BASE}/data/releases/${RELEASE_DIR_NAME}/schemaorg-all-https-types.csv`,
+    path: join(cacheDir, "schemaorg-all-https-types.csv"),
+  },
+  {
+    url: `${RAW_BASE}/data/releases/${RELEASE_DIR_NAME}/schemaorg-all-https-properties.csv`,
+    path: join(cacheDir, "schemaorg-all-https-properties.csv"),
+  },
+  {
+    url: `${RAW_BASE}/versions.json`,
+    path: join(cacheDir, "versions.json"),
+  },
+];
+
+async function ensureCached() {
+  mkdirSync(cacheDir, { recursive: true });
+  for (const { url, path } of files) {
+    if (existsSync(path)) continue;
+    console.log(`Fetching ${url}`);
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
+      process.exit(1);
+    }
+    writeFileSync(path, Buffer.from(await res.arrayBuffer()));
+  }
 }
 
-const typesPath = join(releaseDir, "schemaorg-all-https-types.csv");
-const propertiesPath = join(releaseDir, "schemaorg-all-https-properties.csv");
+await ensureCached();
 
-if (!existsSync(typesPath) || !existsSync(propertiesPath)) {
-  console.error(`Expected CSVs not found in: ${releaseDir}`);
-  process.exit(1);
-}
+const typesPath = join(cacheDir, "schemaorg-all-https-types.csv");
+const propertiesPath = join(cacheDir, "schemaorg-all-https-properties.csv");
+const versionsPath = join(cacheDir, "versions.json");
 
-const version = existsSync(versionsPath)
-  ? (JSON.parse(readFileSync(versionsPath, "utf8")).schemaversion ?? "unknown")
-  : "unknown";
+const version = JSON.parse(readFileSync(versionsPath, "utf8")).schemaversion ?? "unknown";
 
 function strip(id) {
   return id.replace(SCHEMA_PREFIX_RE, "");

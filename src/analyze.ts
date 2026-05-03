@@ -30,8 +30,8 @@ export function analyze(html: string): SeoData {
     links: extractLinks($),
     language: extractLanguage($),
     charset: extractCharset($),
-    favicon: extractFavicon($),
-    manifestUrl: extractManifest($),
+    favicons: extractFavicon($),
+    manifestUrls: extractManifest($),
     structuredData: extractStructuredData($),
   };
 }

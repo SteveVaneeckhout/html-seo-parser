@@ -76,13 +76,28 @@ describe("extractJsonLd", () => {
     expect(items[1]?.["@type"]).toEqual(["Article", "NewsArticle"]);
   });
 
-  it("skips primitive roots (string/number/null)", () => {
+  it("emits @parseError for primitive roots (string/number/null)", () => {
     const html = `
       <script type="application/ld+json">"just a string"</script>
       <script type="application/ld+json">42</script>
       <script type="application/ld+json">null</script>
     `;
-    expect(extract(html)).toEqual([]);
+    const items = extract(html);
+    expect(items).toHaveLength(3);
+    expect(items[0]?.["@parseError"]).toMatch(/got string/);
+    expect(items[1]?.["@parseError"]).toMatch(/got number/);
+    expect(items[2]?.["@parseError"]).toMatch(/got null/);
+  });
+
+  it("emits @parseError for non-object entries inside an array root", () => {
+    const html = `<script type="application/ld+json">
+      [{"@type":"A"}, "stray", 7]
+    </script>`;
+    const items = extract(html);
+    expect(items).toHaveLength(3);
+    expect(items[0]?.["@type"]).toBe("A");
+    expect(items[1]?.["@parseError"]).toMatch(/got string/);
+    expect(items[2]?.["@parseError"]).toMatch(/got number/);
   });
 
   it("flattens nested arrays inside an array root", () => {

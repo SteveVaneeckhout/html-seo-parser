@@ -1,6 +1,7 @@
-# seotest
+# html-seo-parser
 
 Parse an HTML string and extract all SEO-relevant data in one call. Fully typed, synchronous, zero config.
+Made with Claude.ai
 
 ## Requirements
 
@@ -10,13 +11,13 @@ Parse an HTML string and extract all SEO-relevant data in one call. Fully typed,
 ## Installation
 
 ```sh
-npm install seotest
+npm install html-seo-parser
 ```
 
 ## Usage
 
 ```ts
-import { analyze } from "seotest";
+import { analyze } from "html-seo-parser";
 
 const html = await fetch("https://example.com").then((r) => r.text());
 const data = analyze(html);
@@ -28,7 +29,8 @@ console.log(data.twitterCard.card); // "summary_large_image"
 console.log(data.canonical); // "https://example.com/"
 console.log(data.language); // "en"
 console.log(data.charset); // "utf-8"
-console.log(data.favicon); // "/favicon.ico"
+console.log(data.favicons); // [{ href: "/favicon.ico", rel: "icon", ... }, ...]
+console.log(data.manifestUrls); // ["/site.webmanifest"]
 console.log(data.hreflang); // [{ hreflang: "en", href: "..." }, ...]
 console.log(data.headings); // [{ level: 1, text: "Hello", order: 0 }, ...]
 console.log(data.images); // [{ src: "/img.jpg", alt: "...", ... }, ...]
@@ -58,7 +60,8 @@ Parses the HTML string and returns a [`SeoData`](#seedata) object. Synchronous.
 | `links`          | [`LinkEntry[]`](#linkentry)           | `<a href="...">`                                       |
 | `language`       | `string \| null`                      | `<html lang="...">`                                    |
 | `charset`        | `string \| null`                      | `<meta charset>` or `<meta http-equiv="content-type">` |
-| `favicon`        | `string \| null`                      | `<link rel="icon">` / `rel="shortcut icon"`            |
+| `favicons`       | [`FaviconEntry[]`](#faviconentry)     | `<link rel="icon">`, `apple-touch-icon`, etc.          |
+| `manifestUrls`   | `string[]`                            | `<link rel="manifest">`                                |
 | `structuredData` | [`StructuredData`](#structureddata)   | JSON-LD `<script>`, microdata, RDFa                    |
 
 ### `MetaData`
@@ -155,6 +158,24 @@ interface LinkEntry {
 
 Only `<a href="...">` elements are included. Non-navigable anchors (no `href`) are excluded.
 
+### `FaviconEntry`
+
+```ts
+interface FaviconEntry {
+  href: string;
+  rel: string; // raw rel value, e.g. "icon", "shortcut icon", "apple-touch-icon"
+  sizes: string | null;
+  type: string | null;
+  isDefault: boolean; // true for the synthetic "/favicon.ico" fallback
+}
+```
+
+Recognised `rel` tokens: `icon`, `shortcut`, `apple-touch-icon`, `apple-touch-icon-precomposed`, `mask-icon`, `fluid-icon`. If no root `/favicon.ico` is declared, a synthetic entry with `isDefault: true` is appended so consumers always see the implicit browser fallback.
+
+### `manifestUrls`
+
+`string[]` of `href` values from `<link rel="manifest">` elements, trimmed. Empty values are dropped. Multiple manifests are returned in DOM order.
+
 ### `StructuredData`
 
 Schema.org structured data extracted from the page, kept in three buckets corresponding to the three formats commonly used in real-world HTML:
@@ -189,7 +210,7 @@ The RDFa extractor implements RDFa Lite plus the small set of RDFa 1.1 features 
 #### Helpers
 
 ```ts
-import { flattenStructuredData, flattenGraph } from "seotest";
+import { flattenStructuredData, flattenGraph } from "html-seo-parser";
 
 const all = flattenStructuredData(data.structuredData);
 // Array<StructuredDataItem & { _source: "jsonLd" | "microdata" | "rdfa" }>
@@ -200,11 +221,11 @@ const inlined = flattenGraph(data.structuredData.jsonLd);
 
 ## Validation (optional)
 
-A lightweight validator built against Schema.org release 30.0 is available at the `seotest/validate` sub-path. It is opt-in and only loaded when imported, so the base bundle stays free of vocabulary data:
+A lightweight validator built against Schema.org release 30.0 is available at the `html-seo-parser/validate` sub-path. It is opt-in and only loaded when imported, so the base bundle stays free of vocabulary data:
 
 ```ts
-import { analyze } from "seotest";
-import { validate } from "seotest/validate";
+import { analyze } from "html-seo-parser";
+import { validate } from "html-seo-parser/validate";
 
 const data = analyze(html);
 const result = validate(data.structuredData);
@@ -258,7 +279,7 @@ If none of these hold, a single `info`-level `unknown-vocabulary` issue is emitt
 The bundled vocabulary is generated from a Schema.org release. Read the active version:
 
 ```ts
-import { VOCAB_VERSION } from "seotest/validate";
+import { VOCAB_VERSION } from "html-seo-parser/validate";
 console.log(VOCAB_VERSION); // "30.0"
 ```
 

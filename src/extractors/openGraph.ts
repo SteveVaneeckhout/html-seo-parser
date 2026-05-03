@@ -2,13 +2,13 @@ import type { CheerioAPI } from "cheerio";
 import type { OpenGraphData } from "../types.js";
 
 function getOgProp($: CheerioAPI, property: string): string | null {
-  const content = $(`meta[property="${property}"]`).attr("content");
+  const content = $(`meta[property="${property}" i]`).attr("content");
   return content !== undefined && content.trim().length > 0 ? content.trim() : null;
 }
 
 export function extractOpenGraph($: CheerioAPI): OpenGraphData {
   const localeAlternate: string[] = [];
-  $('meta[property="og:locale:alternate"]').each((_i, el) => {
+  $('meta[property="og:locale:alternate" i]').each((_i, el) => {
     const content = $(el).attr("content");
     if (content !== undefined && content.trim().length > 0) {
       localeAlternate.push(content.trim());

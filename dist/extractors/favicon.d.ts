@@ -1,3 +1,4 @@
 import type { CheerioAPI } from "cheerio";
-export declare function extractFavicon($: CheerioAPI): string | null;
+import type { FaviconEntry } from "../types.js";
+export declare function extractFavicon($: CheerioAPI): FaviconEntry[];
 //# sourceMappingURL=favicon.d.ts.map

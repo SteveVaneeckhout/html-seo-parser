@@ -31,5 +31,9 @@ function toItems(value) {
   if (value !== null && typeof value === "object") {
     return [value];
   }
-  return [];
+  return [
+    {
+      "@parseError": `Expected JSON-LD object, got ${value === null ? "null" : typeof value}`,
+    },
+  ];
 }

@@ -39,5 +39,9 @@ function toItems(value: unknown): StructuredDataItem[] {
   if (value !== null && typeof value === "object") {
     return [value as StructuredDataItem];
   }
-  return [];
+  return [
+    {
+      "@parseError": `Expected JSON-LD object, got ${value === null ? "null" : typeof value}`,
+    },
+  ];
 }

@@ -15,6 +15,7 @@ export type {
   HeadingEntry,
   ImageEntry,
   LinkEntry,
+  FaviconEntry,
   StructuredData,
   StructuredDataItem,
   StructuredDataValue,

@@ -1,7 +1,5 @@
-import type { CheerioAPI } from "cheerio";
-
-export function extractManifest($: CheerioAPI): string[] {
-  const urls: string[] = [];
+export function extractManifest($) {
+  const urls = [];
   $('link[rel="manifest"]').each((_i, el) => {
     const href = $(el).attr("href");
     if (href === undefined) return;
