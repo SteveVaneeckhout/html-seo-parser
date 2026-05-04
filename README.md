@@ -17,31 +17,53 @@ npm install html-seo-parser
 ## Usage
 
 ```ts
-import { analyze } from "html-seo-parser";
+import { analyze, fetchHtml } from "html-seo-parser";
 
+// Parse a string you already have:
 const html = await fetch("https://example.com").then((r) => r.text());
 const data = analyze(html);
 
-console.log(data.title); // "Example Domain"
-console.log(data.meta.description); // "An example site"
-console.log(data.openGraph.image); // "https://example.com/og.jpg"
-console.log(data.twitterCard.card); // "summary_large_image"
-console.log(data.canonical); // "https://example.com/"
-console.log(data.language); // "en"
-console.log(data.charset); // "utf-8"
-console.log(data.favicons); // [{ href: "/favicon.ico", rel: "icon", ... }, ...]
-console.log(data.manifestUrls); // ["/site.webmanifest"]
-console.log(data.hreflang); // [{ hreflang: "en", href: "..." }, ...]
-console.log(data.headings); // [{ level: 1, text: "Hello", order: 0 }, ...]
-console.log(data.images); // [{ src: "/img.jpg", alt: "...", ... }, ...]
-console.log(data.links); // [{ href: "/about", rel: "nofollow", ... }, ...]
+// Or fetch + analyze in one call:
+const result = await fetchHtml("https://example.com");
+console.log(result.title); // "Example Domain"
+console.log(result.metaTags.description); // "An example site"
+console.log(result.meta.httpStatus); // 200
+console.log(result.meta.redirects); // number of redirects followed
 ```
+
+`fetchHtml` returns the same `SeoData` shape with an extra `meta: FetchMeta` field describing the HTTP fetch.
 
 ## API
 
 ### `analyze(html: string): SeoData`
 
 Parses the HTML string and returns a [`SeoData`](#seedata) object. Synchronous.
+
+### `fetchHtml(url: string, options?: FetchOptions): Promise<FetchResult>`
+
+Fetches the URL using the global `fetch`, then runs `analyze()` on the response body. Returns `SeoData` extended with a `meta: FetchMeta` field. Throws `FetchError` on network errors, non-2xx HTTP, redirect-cap exceeded, or body size cap exceeded.
+
+| Option         | Type     | Default                 | Description                               |
+| -------------- | -------- | ----------------------- | ----------------------------------------- |
+| `timeoutMs`    | `number` | `10000`                 | Request timeout in milliseconds           |
+| `userAgent`    | `string` | `'html-seo-parser/3.0'` | `User-Agent` header sent with the request |
+| `maxRedirects` | `number` | `5`                     | Maximum redirects to follow (0 disables)  |
+| `maxSizeBytes` | `number` | `10 * 1024 * 1024`      | Response body cap in bytes                |
+
+```ts
+interface FetchMeta {
+  url: string;
+  finalUrl: string;
+  httpStatus: number | null; // null only inside FetchError; non-null on success
+  contentType: string | null;
+  redirects: number;
+}
+
+class FetchError extends Error {
+  readonly url: string;
+  readonly status: number | null; // HTTP status, or null for network/timeout
+}
+```
 
 ## Return type
 
@@ -50,7 +72,7 @@ Parses the HTML string and returns a [`SeoData`](#seedata) object. Synchronous.
 | Field            | Type                                  | Source                                                 |
 | ---------------- | ------------------------------------- | ------------------------------------------------------ |
 | `title`          | `string \| null`                      | `<title>`                                              |
-| `meta`           | [`MetaData`](#metadata)               | `<meta name="...">` and `<meta http-equiv="...">`      |
+| `metaTags`       | [`MetaData`](#metadata)               | `<meta name="...">` and `<meta http-equiv="...">`      |
 | `openGraph`      | [`OpenGraphData`](#opengraphdata)     | `<meta property="og:*">`                               |
 | `twitterCard`    | [`TwitterCardData`](#twittercarddata) | `<meta name="twitter:*">`                              |
 | `canonical`      | `string \| null`                      | `<link rel="canonical">`                               |

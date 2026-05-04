@@ -1,4 +1,5 @@
 export { analyze } from "./analyze.js";
+export { fetchHtml, FetchError } from "./fetch.js";
 export {
   flattenStructuredData,
   flattenGraph,
@@ -19,4 +20,7 @@ export type {
   StructuredData,
   StructuredDataItem,
   StructuredDataValue,
+  FetchOptions,
+  FetchMeta,
+  FetchResult,
 } from "./types.js";

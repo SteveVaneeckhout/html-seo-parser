@@ -20,7 +20,7 @@ export function analyze(html: string): SeoData {
 
   return {
     title: extractTitle($),
-    meta: extractMeta($),
+    metaTags: extractMeta($),
     openGraph: extractOpenGraph($),
     twitterCard: extractTwitterCard($),
     canonical: extractCanonical($),

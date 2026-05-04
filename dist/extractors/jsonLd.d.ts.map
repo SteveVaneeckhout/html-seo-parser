@@ -1,1 +1,0 @@
-{"version":3,"file":"jsonLd.d.ts","sourceRoot":"","sources":["../../src/extractors/jsonLd.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,SAAS,CAAC;AAC1C,OAAO,KAAK,EAAE,kBAAkB,EAAE,MAAM,aAAa,CAAC;AAEtD,wBAAgB,aAAa,CAAC,CAAC,EAAE,UAAU,GAAG,kBAAkB,EAAE,CAuBjE"}

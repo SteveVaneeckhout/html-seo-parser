@@ -89,30 +89,30 @@ describe("analyze()", () => {
     });
   });
 
-  describe("meta", () => {
+  describe("metaTags", () => {
     it("extracts standard meta fields", () => {
-      const { meta } = analyze(FULL_HTML);
-      expect(meta.description).toBe("A test page for SEO analysis");
-      expect(meta.keywords).toBe("seo, test, library");
-      expect(meta.robots).toBe("index, follow");
-      expect(meta.author).toBe("Test Author");
-      expect(meta.viewport).toBe("width=device-width, initial-scale=1");
-      expect(meta.referrer).toBe("no-referrer");
-      expect(meta.rating).toBe("general");
+      const { metaTags } = analyze(FULL_HTML);
+      expect(metaTags.description).toBe("A test page for SEO analysis");
+      expect(metaTags.keywords).toBe("seo, test, library");
+      expect(metaTags.robots).toBe("index, follow");
+      expect(metaTags.author).toBe("Test Author");
+      expect(metaTags.viewport).toBe("width=device-width, initial-scale=1");
+      expect(metaTags.referrer).toBe("no-referrer");
+      expect(metaTags.rating).toBe("general");
     });
 
     it("extracts http-equiv directives", () => {
-      const { meta } = analyze(FULL_HTML);
-      expect(meta.httpEquiv.xUaCompatible).toBe("IE=edge");
-      expect(meta.httpEquiv.refresh).toBe("30");
-      expect(meta.httpEquiv.contentType).toBeNull();
+      const { metaTags } = analyze(FULL_HTML);
+      expect(metaTags.httpEquiv.xUaCompatible).toBe("IE=edge");
+      expect(metaTags.httpEquiv.refresh).toBe("30");
+      expect(metaTags.httpEquiv.contentType).toBeNull();
     });
 
     it("returns nulls for absent meta fields", () => {
-      const { meta } = analyze(EMPTY_HTML);
-      expect(meta.description).toBeNull();
-      expect(meta.keywords).toBeNull();
-      expect(meta.robots).toBeNull();
+      const { metaTags } = analyze(EMPTY_HTML);
+      expect(metaTags.description).toBeNull();
+      expect(metaTags.keywords).toBeNull();
+      expect(metaTags.robots).toBeNull();
     });
 
     it("matches meta name value case-insensitively", () => {
@@ -120,9 +120,9 @@ describe("analyze()", () => {
         <meta name="Description" content="Capitalised name value">
         <meta name="ROBOTS" content="index, follow">
       </head><body></body></html>`;
-      const { meta } = analyze(html);
-      expect(meta.description).toBe("Capitalised name value");
-      expect(meta.robots).toBe("index, follow");
+      const { metaTags } = analyze(html);
+      expect(metaTags.description).toBe("Capitalised name value");
+      expect(metaTags.robots).toBe("index, follow");
     });
   });
 

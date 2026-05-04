@@ -105,7 +105,7 @@ export interface StructuredData {
 //   what was on the page.
 export interface SeoData {
   title: string | null;
-  meta: MetaData;
+  metaTags: MetaData;
   openGraph: OpenGraphData;
   twitterCard: TwitterCardData;
   canonical: string | null;
@@ -118,4 +118,23 @@ export interface SeoData {
   favicons: FaviconEntry[];
   manifestUrls: string[];
   structuredData: StructuredData;
+}
+
+export interface FetchOptions {
+  timeoutMs?: number;
+  userAgent?: string;
+  maxRedirects?: number;
+  maxSizeBytes?: number;
+}
+
+export interface FetchMeta {
+  url: string;
+  finalUrl: string;
+  httpStatus: number | null;
+  contentType: string | null;
+  redirects: number;
+}
+
+export interface FetchResult extends SeoData {
+  meta: FetchMeta;
 }
