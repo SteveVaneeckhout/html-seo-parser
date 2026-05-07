@@ -1,112 +1,118 @@
 export interface HttpEquivData {
-    contentType: string | null;
-    refresh: string | null;
-    xUaCompatible: string | null;
+  contentType: string | null;
+  refresh: string | null;
+  xUaCompatible: string | null;
 }
 export interface MetaData {
-    description: string | null;
-    keywords: string | null;
-    robots: string | null;
-    author: string | null;
-    viewport: string | null;
-    rating: string | null;
-    referrer: string | null;
-    httpEquiv: HttpEquivData;
+  description: string | null;
+  keywords: string | null;
+  robots: string | null;
+  author: string | null;
+  viewport: string | null;
+  rating: string | null;
+  referrer: string | null;
+  httpEquiv: HttpEquivData;
 }
 export interface OpenGraphData {
-    title: string | null;
-    description: string | null;
-    image: string | null;
-    imageWidth: string | null;
-    imageHeight: string | null;
-    imageAlt: string | null;
-    url: string | null;
-    type: string | null;
-    siteName: string | null;
-    locale: string | null;
-    localeAlternate: string[];
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  imageWidth: string | null;
+  imageHeight: string | null;
+  imageAlt: string | null;
+  url: string | null;
+  type: string | null;
+  siteName: string | null;
+  locale: string | null;
+  localeAlternate: string[];
 }
 export interface TwitterCardData {
-    card: string | null;
-    title: string | null;
-    description: string | null;
-    image: string | null;
-    imageAlt: string | null;
-    site: string | null;
-    creator: string | null;
+  card: string | null;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  imageAlt: string | null;
+  site: string | null;
+  creator: string | null;
 }
 export interface HreflangEntry {
-    hreflang: string;
-    href: string;
+  hreflang: string;
+  href: string;
 }
 export interface HeadingEntry {
-    level: 1 | 2 | 3 | 4 | 5 | 6;
-    text: string;
-    order: number;
+  level: 1 | 2 | 3 | 4 | 5 | 6;
+  text: string;
+  order: number;
 }
 export interface ImageEntry {
-    src: string | null;
-    alt: string | null;
-    title: string | null;
-    width: string | null;
-    height: string | null;
-    loading: string | null;
+  src: string | null;
+  alt: string | null;
+  title: string | null;
+  width: string | null;
+  height: string | null;
+  loading: string | null;
 }
 export interface FaviconEntry {
-    href: string;
-    rel: string;
-    sizes: string | null;
-    type: string | null;
-    isDefault: boolean;
+  href: string;
+  rel: string;
+  sizes: string | null;
+  type: string | null;
+  isDefault: boolean;
 }
 export interface LinkEntry {
-    href: string;
-    rel: string | null;
-    text: string | null;
-    target: string | null;
+  href: string;
+  rel: string | null;
+  text: string | null;
+  target: string | null;
 }
-export type StructuredDataValue = string | number | boolean | null | StructuredDataItem | StructuredDataValue[];
+export type StructuredDataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | StructuredDataItem
+  | StructuredDataValue[];
 export interface StructuredDataItem {
-    "@context"?: string | string[] | Record<string, unknown>;
-    "@type"?: string | string[];
-    "@id"?: string;
-    "@parseError"?: string;
-    [property: string]: StructuredDataValue | Record<string, unknown> | undefined;
+  "@context"?: string | string[] | Record<string, unknown>;
+  "@type"?: string | string[];
+  "@id"?: string;
+  "@parseError"?: string;
+  [property: string]: StructuredDataValue | Record<string, unknown> | undefined;
 }
 export interface StructuredData {
-    jsonLd: StructuredDataItem[];
-    microdata: StructuredDataItem[];
-    rdfa: StructuredDataItem[];
+  jsonLd: StructuredDataItem[];
+  microdata: StructuredDataItem[];
+  rdfa: StructuredDataItem[];
 }
 export interface SeoData {
-    title: string | null;
-    metaTags: MetaData;
-    openGraph: OpenGraphData;
-    twitterCard: TwitterCardData;
-    canonical: string | null;
-    hreflang: HreflangEntry[];
-    headings: HeadingEntry[];
-    images: ImageEntry[];
-    links: LinkEntry[];
-    language: string | null;
-    charset: string | null;
-    favicons: FaviconEntry[];
-    manifestUrls: string[];
-    structuredData: StructuredData;
+  title: string | null;
+  metaTags: MetaData;
+  openGraph: OpenGraphData;
+  twitterCard: TwitterCardData;
+  canonical: string | null;
+  hreflang: HreflangEntry[];
+  headings: HeadingEntry[];
+  images: ImageEntry[];
+  links: LinkEntry[];
+  language: string | null;
+  charset: string | null;
+  favicons: FaviconEntry[];
+  manifestUrls: string[];
+  structuredData: StructuredData;
 }
 export interface FetchOptions {
-    timeoutMs?: number;
-    userAgent?: string;
-    maxRedirects?: number;
-    maxSizeBytes?: number;
+  timeoutMs?: number;
+  userAgent?: string;
+  maxRedirects?: number;
+  maxSizeBytes?: number;
 }
 export interface FetchMeta {
-    url: string;
-    finalUrl: string;
-    httpStatus: number | null;
-    contentType: string | null;
-    redirects: number;
+  url: string;
+  finalUrl: string;
+  httpStatus: number | null;
+  contentType: string | null;
+  redirects: number;
 }
 export interface FetchResult extends SeoData {
-    meta: FetchMeta;
+  meta: FetchMeta;
 }

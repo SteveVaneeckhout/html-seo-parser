@@ -14,21 +14,21 @@ import { extractFavicon } from "./extractors/favicon.js";
 import { extractManifest } from "./extractors/manifest.js";
 import { extractStructuredData } from "./extractors/structuredData.js";
 export function analyze(html) {
-    const $ = load(html);
-    return {
-        title: extractTitle($),
-        metaTags: extractMeta($),
-        openGraph: extractOpenGraph($),
-        twitterCard: extractTwitterCard($),
-        canonical: extractCanonical($),
-        hreflang: extractHreflang($),
-        headings: extractHeadings($),
-        images: extractImages($),
-        links: extractLinks($),
-        language: extractLanguage($),
-        charset: extractCharset($),
-        favicons: extractFavicon($),
-        manifestUrls: extractManifest($),
-        structuredData: extractStructuredData($),
-    };
+  const $ = load(html);
+  return {
+    title: extractTitle($),
+    metaTags: extractMeta($),
+    openGraph: extractOpenGraph($),
+    twitterCard: extractTwitterCard($),
+    canonical: extractCanonical($),
+    hreflang: extractHreflang($),
+    headings: extractHeadings($),
+    images: extractImages($),
+    links: extractLinks($),
+    language: extractLanguage($),
+    charset: extractCharset($),
+    favicons: extractFavicon($),
+    manifestUrls: extractManifest($),
+    structuredData: extractStructuredData($),
+  };
 }
