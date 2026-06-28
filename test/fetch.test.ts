@@ -42,6 +42,20 @@ describe("fetchHtml – success", () => {
       redirects: 0,
     });
   });
+
+  it("classifies links against the final URL as base", async () => {
+    const html = `<!DOCTYPE html><html><body>
+      <a href="/about">Internal</a>
+      <a href="https://other.com/x">External</a>
+    </body></html>`;
+    stubFetch(new Response(html, { status: 200, headers: { "Content-Type": "text/html" } }));
+    const { links } = await fetchHtml(URL_TARGET);
+    expect(links[0]).toMatchObject({
+      isExternal: false,
+      resolvedUrl: "https://example.com/about",
+    });
+    expect(links[1]).toMatchObject({ isExternal: true, resolvedUrl: "https://other.com/x" });
+  });
 });
 
 describe("fetchHtml – HTTP errors", () => {
@@ -102,7 +116,7 @@ describe("fetchHtml – options", () => {
     const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
     await fetchHtml(URL_TARGET);
     const headers = fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string> | undefined;
-    expect(headers?.["User-Agent"]).toBe("html-seo-parser/3.0");
+    expect(headers?.["User-Agent"]).toBe("html-seo-parser/3.1");
   });
 
   it("uses custom User-Agent", async () => {

@@ -1,5 +1,5 @@
 import { load } from "cheerio";
-import type { SeoData } from "./types.js";
+import type { AnalyzeOptions, SeoData } from "./types.js";
 import { extractTitle } from "./extractors/title.js";
 import { extractMeta } from "./extractors/meta.js";
 import { extractOpenGraph } from "./extractors/openGraph.js";
@@ -15,8 +15,19 @@ import { extractFavicon } from "./extractors/favicon.js";
 import { extractManifest } from "./extractors/manifest.js";
 import { extractStructuredData } from "./extractors/structuredData.js";
 
-export function analyze(html: string): SeoData {
+export function analyze(html: string, options?: AnalyzeOptions): SeoData {
   const $ = load(html);
+
+  const docBase = options?.baseUrl;
+  const baseHref = $("base[href]").first().attr("href")?.trim();
+  let effectiveBase = docBase;
+  if (baseHref) {
+    try {
+      effectiveBase = new URL(baseHref, docBase).href;
+    } catch {
+      // Malformed <base href> — fall back to the document base.
+    }
+  }
 
   return {
     title: extractTitle($),
@@ -27,7 +38,7 @@ export function analyze(html: string): SeoData {
     hreflang: extractHreflang($),
     headings: extractHeadings($),
     images: extractImages($),
-    links: extractLinks($),
+    links: extractLinks($, effectiveBase, docBase),
     language: extractLanguage($),
     charset: extractCharset($),
     favicons: extractFavicon($),

@@ -67,11 +67,21 @@ export interface FaviconEntry {
   isDefault: boolean;
 }
 
+export type LinkKind = "http" | "email" | "tel" | "ftp" | "anchor" | "other";
+
 export interface LinkEntry {
   href: string;
   rel: string | null;
   text: string | null;
   target: string | null;
+  kind: LinkKind;
+  isExternal: boolean | null;
+  resolvedUrl: string | null;
+  likelyMissingProtocol: boolean;
+}
+
+export interface AnalyzeOptions {
+  baseUrl?: string;
 }
 
 export type StructuredDataValue =

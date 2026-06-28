@@ -1,7 +1,7 @@
 import { analyze } from "./analyze.js";
 import type { FetchMeta, FetchOptions, FetchResult } from "./types.js";
 
-const DEFAULT_USER_AGENT = "html-seo-parser/3.0";
+const DEFAULT_USER_AGENT = "html-seo-parser/3.1";
 const DEFAULT_MAX_REDIRECTS = 5;
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_SIZE_BYTES = 10 * 1024 * 1024;
@@ -152,7 +152,7 @@ async function fetchWithRedirects(initialUrl: string, opts: ResolvedOptions): Pr
 export async function fetchHtml(url: string, options: FetchOptions = {}): Promise<FetchResult> {
   const opts = resolveOptions(options);
   const fetched = await fetchWithRedirects(url, opts);
-  const seo = analyze(fetched.body);
+  const seo = analyze(fetched.body, { baseUrl: fetched.finalUrl });
   const meta: FetchMeta = {
     url,
     finalUrl: fetched.finalUrl,

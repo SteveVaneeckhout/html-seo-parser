@@ -35,9 +35,17 @@ console.log(result.meta.redirects); // number of redirects followed
 
 ## API
 
-### `analyze(html: string): SeoData`
+### `analyze(html: string, options?: AnalyzeOptions): SeoData`
 
 Parses the HTML string and returns a [`SeoData`](#seedata) object. Synchronous.
+
+Pass `{ baseUrl }` to enable link resolution and external-link detection (see [`LinkEntry`](#linkentry)). The base URL is the document's own URL; relative `href`s are resolved against it and any in-page `<base href>`. Without a `baseUrl`, link `resolvedUrl`/`isExternal` are `null` for relative links. `fetchHtml` supplies this automatically using the post-redirect `finalUrl`.
+
+```ts
+interface AnalyzeOptions {
+  baseUrl?: string;
+}
+```
 
 ### `fetchHtml(url: string, options?: FetchOptions): Promise<FetchResult>`
 
@@ -46,7 +54,7 @@ Fetches the URL using the global `fetch`, then runs `analyze()` on the response 
 | Option         | Type     | Default                 | Description                               |
 | -------------- | -------- | ----------------------- | ----------------------------------------- |
 | `timeoutMs`    | `number` | `10000`                 | Request timeout in milliseconds           |
-| `userAgent`    | `string` | `'html-seo-parser/3.0'` | `User-Agent` header sent with the request |
+| `userAgent`    | `string` | `'html-seo-parser/3.1'` | `User-Agent` header sent with the request |
 | `maxRedirects` | `number` | `5`                     | Maximum redirects to follow (0 disables)  |
 | `maxSizeBytes` | `number` | `10 * 1024 * 1024`      | Response body cap in bytes                |
 
@@ -175,10 +183,21 @@ interface LinkEntry {
   rel: string | null; // raw value, e.g. "nofollow noopener noreferrer"
   text: string | null; // null when the anchor has no text content
   target: string | null;
+  kind: LinkKind; // category derived from the href's scheme/shape
+  isExternal: boolean | null; // http links only: resolves to a different host than the page
+  resolvedUrl: string | null; // absolute URL resolved against the base; null when unresolvable
+  likelyMissingProtocol: boolean; // best-effort flag for a scheme-less href that looks like a domain
 }
+
+type LinkKind = "http" | "email" | "tel" | "ftp" | "anchor" | "other";
 ```
 
 Only `<a href="...">` elements are included. Non-navigable anchors (no `href`) are excluded.
+
+- **`kind`** — `"http"` for `http`/`https` and scheme-less navigable links (relative, root-relative, protocol-relative); `"email"` for `mailto:`; `"tel"` for `tel:`; `"ftp"` for `ftp`/`ftps`; `"anchor"` for in-page `#fragment` links; `"other"` for any other scheme (e.g. `javascript:`, `data:`).
+- **`isExternal`** — `true` when an `http` link resolves to a different host than the page's own URL (**exact host** match, so `blog.example.com` is external to `www.example.com`). `null` for non-`http` links or when no `baseUrl` was provided.
+- **`resolvedUrl`** — the absolute URL after resolving `href` against the base. `null` for relative links when no `baseUrl` is known, or when the value can't be parsed.
+- **`likelyMissingProtocol`** — best-effort detection of the common authoring mistake of writing an external link without a scheme, e.g. `href="www.example.com/contact"`. The browser resolves this _relative to the current path_ (→ `https://yoursite.com/about/www.example.com/contact`), which is rarely intended. Heuristic: a scheme-less, non-rooted `href` whose first segment looks like a hostname (`www.*` or `domain.tld`). Common relative resources such as `image.png` or `app.js` are not flagged.
 
 ### `FaviconEntry`
 

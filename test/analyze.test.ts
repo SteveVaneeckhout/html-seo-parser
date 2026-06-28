@@ -264,12 +264,20 @@ describe("analyze()", () => {
         rel: "nofollow",
         text: "About Us",
         target: "_blank",
+        kind: "http",
+        isExternal: null,
+        resolvedUrl: "https://example.com/about",
+        likelyMissingProtocol: false,
       });
       expect(links[1]).toEqual({
         href: "/contact",
         rel: null,
         text: "Contact",
         target: null,
+        kind: "http",
+        isExternal: null,
+        resolvedUrl: null,
+        likelyMissingProtocol: false,
       });
       expect(links[2]).toMatchObject({ rel: "nofollow noopener noreferrer" });
     });
@@ -279,6 +287,124 @@ describe("analyze()", () => {
         '<html><head></head><body><a href="/icon"><img src="x.png" alt="icon"></a></body></html>',
       );
       expect(links[0]?.text).toBeNull();
+    });
+
+    describe("classification", () => {
+      const BASE = "https://mywebsite.com/about/";
+      const link = (href: string, baseUrl?: string) =>
+        analyze(`<html><body><a href="${href}">x</a></body></html>`, { baseUrl }).links[0]!;
+
+      it("classifies link kinds by scheme and shape", () => {
+        expect(link("mailto:hi@example.com").kind).toBe("email");
+        expect(link("tel:+3212345678").kind).toBe("tel");
+        expect(link("ftp://files.example.com/file.zip").kind).toBe("ftp");
+        expect(link("ftps://files.example.com/file.zip").kind).toBe("ftp");
+        expect(link("#section").kind).toBe("anchor");
+        expect(link("javascript:void(0)").kind).toBe("other");
+        expect(link("http://example.com/page").kind).toBe("http");
+        expect(link("https://example.com/page").kind).toBe("http");
+        expect(link("/relative").kind).toBe("http");
+      });
+
+      it("flags off-host http links as external", () => {
+        expect(link("https://other.com/page", BASE).isExternal).toBe(true);
+        expect(link("https://mywebsite.com/contact", BASE).isExternal).toBe(false);
+        expect(link("/contact", BASE).isExternal).toBe(false);
+      });
+
+      it("treats different subdomains as external (exact host)", () => {
+        expect(link("https://blog.mywebsite.com/post", BASE).isExternal).toBe(true);
+      });
+
+      it("returns null isExternal for non-http links and when base is unknown", () => {
+        expect(link("mailto:hi@example.com", BASE).isExternal).toBeNull();
+        expect(link("#section", BASE).isExternal).toBeNull();
+        expect(link("/contact").isExternal).toBeNull();
+      });
+
+      it("returns null isExternal when the provided baseUrl is invalid", () => {
+        const entry = link("/contact", "not a valid url");
+        expect(entry.kind).toBe("http");
+        expect(entry.isExternal).toBeNull();
+        expect(entry.resolvedUrl).toBeNull();
+      });
+
+      it("resolves relative hrefs against the base URL", () => {
+        expect(link("/contact", BASE).resolvedUrl).toBe("https://mywebsite.com/contact");
+        expect(link("page.html", BASE).resolvedUrl).toBe("https://mywebsite.com/about/page.html");
+        expect(link("https://example.com/x").resolvedUrl).toBe("https://example.com/x");
+        expect(link("/contact").resolvedUrl).toBeNull();
+      });
+
+      it("flags a bare external domain written without a scheme", () => {
+        const entry = link("www.example.com/contact", BASE);
+        expect(entry.kind).toBe("http");
+        expect(entry.likelyMissingProtocol).toBe(true);
+        expect(entry.resolvedUrl).toBe("https://mywebsite.com/about/www.example.com/contact");
+        expect(entry.isExternal).toBe(false);
+      });
+
+      it("flags bare domains and does not flag relative resources or paths", () => {
+        expect(link("example.com").likelyMissingProtocol).toBe(true);
+        expect(link("sub.example.co.uk/x").likelyMissingProtocol).toBe(true);
+        expect(link("image.png").likelyMissingProtocol).toBe(false);
+        expect(link("photo.avif").likelyMissingProtocol).toBe(false);
+        expect(link("app.js").likelyMissingProtocol).toBe(false);
+        expect(link("contact").likelyMissingProtocol).toBe(false);
+        expect(link("/contact").likelyMissingProtocol).toBe(false);
+        expect(link("#section").likelyMissingProtocol).toBe(false);
+        expect(link("https://example.com").likelyMissingProtocol).toBe(false);
+      });
+
+      it("honors an in-page <base href> for resolution and external detection", () => {
+        const html = `<html><head><base href="https://cdn.example.com/"></head>
+          <body><a href="/asset">x</a></body></html>`;
+        const entry = analyze(html, { baseUrl: BASE }).links[0]!;
+        expect(entry.resolvedUrl).toBe("https://cdn.example.com/asset");
+        expect(entry.isExternal).toBe(true);
+      });
+
+      describe("malformed / garbage hrefs", () => {
+        it("degrades gracefully on unparseable absolute URLs (no throw)", () => {
+          for (const href of ["http://", "https://", "http://[bad", "https://exa mple.com"]) {
+            const entry = link(href, BASE);
+            expect(entry.kind).toBe("http");
+            expect(entry.resolvedUrl).toBeNull();
+            expect(entry.isExternal).toBeNull();
+            expect(entry.likelyMissingProtocol).toBe(false);
+          }
+        });
+
+        it("treats empty and whitespace-only hrefs as the current document", () => {
+          for (const href of ["", "   "]) {
+            const entry = link(href, BASE);
+            expect(entry.kind).toBe("http");
+            expect(entry.resolvedUrl).toBe(BASE);
+            expect(entry.isExternal).toBe(false);
+            expect(entry.likelyMissingProtocol).toBe(false);
+          }
+        });
+
+        it("trims surrounding whitespace before classifying", () => {
+          const entry = link("  https://other.com/x  ", BASE);
+          expect(entry.kind).toBe("http");
+          expect(entry.resolvedUrl).toBe("https://other.com/x");
+          expect(entry.isExternal).toBe(true);
+        });
+
+        it("classifies unknown or malformed schemes as other", () => {
+          expect(link("weird-scheme://foo", BASE).kind).toBe("other");
+          expect(link("about:blank", BASE).kind).toBe("other");
+        });
+
+        it("treats a leading colon (no valid scheme) as a relative path", () => {
+          const entry = link(":broken", BASE);
+          expect(entry.kind).toBe("http");
+          expect(entry.resolvedUrl).toBe("https://mywebsite.com/about/:broken");
+          expect(entry.isExternal).toBe(false);
+          expect(entry.likelyMissingProtocol).toBe(false);
+        });
+      });
     });
   });
 

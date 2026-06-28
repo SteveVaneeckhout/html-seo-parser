@@ -8,6 +8,7 @@ export {
 } from "./structuredData/helpers.js";
 export type {
   SeoData,
+  AnalyzeOptions,
   MetaData,
   HttpEquivData,
   OpenGraphData,
@@ -16,6 +17,7 @@ export type {
   HeadingEntry,
   ImageEntry,
   LinkEntry,
+  LinkKind,
   FaviconEntry,
   StructuredData,
   StructuredDataItem,
