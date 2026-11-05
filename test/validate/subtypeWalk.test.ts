@@ -1,5 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { ancestorTypes } from "../../src/validate/subtypeWalk.js";
+import { ancestorTypes, ancestorsOf } from "../../src/validate/subtypeWalk.js";
+
+describe("ancestorsOf", () => {
+  it("unions the ancestors of several types without mutating the cached sets", () => {
+    const person = ancestorTypes("Person");
+    const sizeBefore = person.size;
+    const both = ancestorsOf(["Person", "Place"]);
+    expect(both.has("Person")).toBe(true);
+    expect(both.has("Place")).toBe(true);
+    expect(both.has("Thing")).toBe(true);
+    expect(person.size).toBe(sizeBefore);
+  });
+
+  it("returns an empty set for no types", () => {
+    expect(ancestorsOf([]).size).toBe(0);
+  });
+});
 
 describe("ancestorTypes", () => {
   it("includes the type itself in the ancestor set", () => {

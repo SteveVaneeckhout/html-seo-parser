@@ -1,7 +1,7 @@
 import { analyze } from "./analyze.js";
 import type { FetchMeta, FetchOptions, FetchResult } from "./types.js";
 
-const DEFAULT_USER_AGENT = "html-seo-parser/3.1";
+const DEFAULT_USER_AGENT = "html-seo-parser/4.0";
 const DEFAULT_MAX_REDIRECTS = 5;
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_SIZE_BYTES = 10 * 1024 * 1024;
@@ -11,9 +11,10 @@ export class FetchError extends Error {
   readonly url: string;
   readonly status: number | null;
 
+  override readonly name = "FetchError";
+
   constructor(message: string, url: string, status: number | null = null, cause?: unknown) {
     super(message, cause === undefined ? undefined : { cause });
-    this.name = "FetchError";
     this.url = url;
     this.status = status;
   }
@@ -24,6 +25,7 @@ interface ResolvedOptions {
   maxRedirects: number;
   timeoutMs: number;
   maxSizeBytes: number;
+  signal: AbortSignal | undefined;
 }
 
 function resolveOptions(options: FetchOptions): ResolvedOptions {
@@ -32,7 +34,13 @@ function resolveOptions(options: FetchOptions): ResolvedOptions {
     maxRedirects: options.maxRedirects ?? DEFAULT_MAX_REDIRECTS,
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     maxSizeBytes: options.maxSizeBytes ?? DEFAULT_MAX_SIZE_BYTES,
+    signal: options.signal,
   };
+}
+
+function requestSignal(opts: ResolvedOptions): AbortSignal {
+  const timeout = AbortSignal.timeout(opts.timeoutMs);
+  return opts.signal === undefined ? timeout : AbortSignal.any([timeout, opts.signal]);
 }
 
 async function readBodyUpToLimit(
@@ -44,34 +52,23 @@ async function readBodyUpToLimit(
   const { body } = response;
   if (body === null) return "";
 
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
+  // A default TextDecoder strips a leading UTF-8 BOM, as Response.text() does.
+  const decoder = new TextDecoder();
+  let text = "";
   let total = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > maxBytes) {
-        throw new FetchError(
-          `Response body exceeds maxSizeBytes (${maxBytes}) at ${url}`,
-          url,
-          status,
-        );
-      }
-      chunks.push(value);
+  // Throwing out of the loop cancels the stream.
+  for await (const chunk of body) {
+    total += chunk.byteLength;
+    if (total > maxBytes) {
+      throw new FetchError(
+        `Response body exceeds maxSizeBytes (${maxBytes}) at ${url}`,
+        url,
+        status,
+      );
     }
-  } finally {
-    await reader.cancel();
+    text += decoder.decode(chunk, { stream: true });
   }
-
-  const combined = new Uint8Array(total);
-  let offset = 0;
-  for (const c of chunks) {
-    combined.set(c, offset);
-    offset += c.byteLength;
-  }
-  return new TextDecoder("utf-8", { fatal: false, ignoreBOM: true }).decode(combined);
+  return text + decoder.decode();
 }
 
 interface FetchedBody {
@@ -92,11 +89,13 @@ async function fetchWithRedirects(initialUrl: string, opts: ResolvedOptions): Pr
       response = await fetch(currentUrl, {
         redirect: "manual",
         headers: { Accept: ACCEPT, "User-Agent": opts.userAgent },
-        signal: AbortSignal.timeout(opts.timeoutMs),
+        signal: requestSignal(opts),
       });
     } catch (cause) {
+      // A caller-initiated abort is rethrown as the caller's own abort reason.
+      opts.signal?.throwIfAborted();
       throw new FetchError(
-        `Failed to fetch ${currentUrl}: ${(cause as Error).message}`,
+        `Failed to fetch ${currentUrl}: ${Error.isError(cause) ? cause.message : String(cause)}`,
         currentUrl,
         null,
         cause,
@@ -120,15 +119,15 @@ async function fetchWithRedirects(initialUrl: string, opts: ResolvedOptions): Pr
           status,
         );
       }
-      try {
-        currentUrl = new URL(location, currentUrl).href;
-      } catch {
+      const nextUrl = URL.parse(location, currentUrl);
+      if (nextUrl === null) {
         throw new FetchError(
           `Redirect from ${currentUrl} has invalid Location: ${location}`,
           currentUrl,
           status,
         );
       }
+      currentUrl = nextUrl.href;
       redirects++;
       continue;
     }

@@ -20,15 +20,8 @@ export function extractJsonLd($) {
     return items;
 }
 function toItems(value) {
-    if (Array.isArray(value)) {
-        const out = [];
-        for (const entry of value) {
-            for (const item of toItems(entry)) {
-                out.push(item);
-            }
-        }
-        return out;
-    }
+    if (Array.isArray(value))
+        return value.flatMap(toItems);
     if (value !== null && typeof value === "object") {
         return [value];
     }

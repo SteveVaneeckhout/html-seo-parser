@@ -46,19 +46,10 @@ function classifyKind(trimmed) {
         return "anchor";
     return "http";
 }
-function resolve(trimmed, baseUrl) {
-    try {
-        return new URL(trimmed, baseUrl ?? undefined).href;
-    }
-    catch {
+function computeIsExternal(kind, resolved, docHost) {
+    if (kind !== "http" || docHost === null || resolved === null)
         return null;
-    }
-}
-function computeIsExternal(kind, resolvedUrl, docHost) {
-    // resolvedUrl is always a serialized URL, so re-parsing it never throws.
-    if (kind !== "http" || docHost === null || resolvedUrl === null)
-        return null;
-    return new URL(resolvedUrl).host !== docHost;
+    return resolved.host !== docHost;
 }
 function detectMissingProtocol(trimmed) {
     if (trimmed.length === 0 ||
@@ -74,37 +65,30 @@ function detectMissingProtocol(trimmed) {
     if (!DOMAIN_RE.test(head))
         return false;
     const labels = head.split(".");
-    const tld = labels[labels.length - 1].toLowerCase();
+    const tld = labels.at(-1).toLowerCase();
     return tld.length >= 2 && /^[a-z]+$/.test(tld) && !TLD_DENYLIST.has(tld);
 }
 // `resolveBase` is the effective base used to resolve relative hrefs (honors any in-page
 // `<base href>`). `docUrl` is the document's own URL — links are "external" when they resolve
 // to a different host than where the page actually lives, regardless of `<base href>`.
 export function extractLinks($, resolveBase, docUrl) {
-    let docHost = null;
-    if (docUrl !== undefined) {
-        try {
-            docHost = new URL(docUrl).host;
-        }
-        catch {
-            docHost = null; // invalid base URL — external status is unknowable
-        }
-    }
+    // An invalid document URL leaves external status unknowable (null).
+    const docHost = docUrl === undefined ? null : (URL.parse(docUrl)?.host ?? null);
     const entries = [];
     $("a[href]").each((_i, el) => {
         const $el = $(el);
         const href = $el.attr("href");
         const trimmed = href.trim();
         const kind = classifyKind(trimmed);
-        const resolvedUrl = resolve(trimmed, resolveBase);
+        const resolved = URL.parse(trimmed, resolveBase);
         entries.push({
             href,
             rel: $el.attr("rel") ?? null,
             text: $el.text().trim() || null,
             target: $el.attr("target") ?? null,
             kind,
-            isExternal: computeIsExternal(kind, resolvedUrl, docHost),
-            resolvedUrl,
+            isExternal: computeIsExternal(kind, resolved, docHost),
+            resolvedUrl: resolved?.href ?? null,
             likelyMissingProtocol: detectMissingProtocol(trimmed),
         });
     });

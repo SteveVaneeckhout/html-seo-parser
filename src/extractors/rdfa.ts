@@ -1,6 +1,7 @@
 import type { CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import type { StructuredDataItem, StructuredDataValue } from "../types.js";
+import { isElement, splitTokens } from "./dom.js";
 
 interface Context {
   vocab: string | null;
@@ -143,20 +144,4 @@ function mergePrefixes(base: Record<string, string>, prefixAttr: string): Record
     }
   }
   return merged;
-}
-
-function splitTokens(value: string): string[] {
-  return value
-    .trim()
-    .split(/\s+/)
-    .filter((t) => t.length > 0);
-}
-
-function isElement(node: unknown): node is Element {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "type" in node &&
-    (node as { type: unknown }).type === "tag"
-  );
 }

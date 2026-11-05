@@ -1,3 +1,4 @@
+import { isElement, splitTokens } from "./dom.js";
 export function extractRdfa($) {
     const items = [];
     const ctx = { vocab: null, prefixes: {}, pendingProps: null };
@@ -131,16 +132,4 @@ function mergePrefixes(base, prefixAttr) {
         }
     }
     return merged;
-}
-function splitTokens(value) {
-    return value
-        .trim()
-        .split(/\s+/)
-        .filter((t) => t.length > 0);
-}
-function isElement(node) {
-    return (typeof node === "object" &&
-        node !== null &&
-        "type" in node &&
-        node.type === "tag");
 }

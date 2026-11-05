@@ -5,7 +5,7 @@ Made with Claude.ai
 
 ## Requirements
 
-- Node.js ≥ 24.15.0
+- Node.js ≥ 26.13.0
 - ESM (`"type": "module"`)
 
 ## Installation
@@ -51,12 +51,13 @@ interface AnalyzeOptions {
 
 Fetches the URL using the global `fetch`, then runs `analyze()` on the response body. Returns `SeoData` extended with a `meta: FetchMeta` field. Throws `FetchError` on network errors, non-2xx HTTP, redirect-cap exceeded, or body size cap exceeded.
 
-| Option         | Type     | Default                 | Description                               |
-| -------------- | -------- | ----------------------- | ----------------------------------------- |
-| `timeoutMs`    | `number` | `10000`                 | Request timeout in milliseconds           |
-| `userAgent`    | `string` | `'html-seo-parser/3.1'` | `User-Agent` header sent with the request |
-| `maxRedirects` | `number` | `5`                     | Maximum redirects to follow (0 disables)  |
-| `maxSizeBytes` | `number` | `10 * 1024 * 1024`      | Response body cap in bytes                |
+| Option         | Type          | Default                 | Description                                                                         |
+| -------------- | ------------- | ----------------------- | ----------------------------------------------------------------------------------- |
+| `timeoutMs`    | `number`      | `10000`                 | Request timeout in milliseconds                                                     |
+| `userAgent`    | `string`      | `'html-seo-parser/4.0'` | `User-Agent` header sent with the request                                           |
+| `maxRedirects` | `number`      | `5`                     | Maximum redirects to follow (0 disables)                                            |
+| `maxSizeBytes` | `number`      | `10 * 1024 * 1024`      | Response body cap in bytes                                                          |
+| `signal`       | `AbortSignal` | —                       | Cancels the request (combined with `timeoutMs`); rejects with the signal's `reason` |
 
 ```ts
 interface FetchMeta {

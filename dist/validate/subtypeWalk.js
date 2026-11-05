@@ -1,9 +1,10 @@
 import { types } from "./vocab.generated.js";
 const cache = new Map();
+/** The type itself plus all of its Schema.org supertypes. Results are cached. */
 export function ancestorTypes(name) {
-    const cached = cache.get(name);
-    if (cached !== undefined)
-        return cached;
+    return cache.getOrInsertComputed(name, computeAncestors);
+}
+function computeAncestors(name) {
     const out = new Set();
     const queue = [name];
     while (queue.length > 0) {
@@ -11,12 +12,13 @@ export function ancestorTypes(name) {
         if (out.has(t))
             continue;
         out.add(t);
-        const def = types[t];
-        if (def !== undefined) {
-            for (const parent of def.subTypeOf)
-                queue.push(parent);
-        }
+        const def = types.get(t);
+        if (def !== undefined)
+            queue.push(...def.subTypeOf);
     }
-    cache.set(name, out);
     return out;
+}
+/** Union of `ancestorTypes` over several type names. */
+export function ancestorsOf(names) {
+    return names.reduce((acc, t) => acc.union(ancestorTypes(t)), new Set());
 }

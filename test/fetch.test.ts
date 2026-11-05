@@ -116,7 +116,7 @@ describe("fetchHtml – options", () => {
     const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
     await fetchHtml(URL_TARGET);
     const headers = fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string> | undefined;
-    expect(headers?.["User-Agent"]).toBe("html-seo-parser/3.1");
+    expect(headers?.["User-Agent"]).toBe("html-seo-parser/4.0");
   });
 
   it("uses custom User-Agent", async () => {
@@ -151,5 +151,56 @@ describe("fetchHtml – redirect error paths", () => {
     stubFetch(new Response(null, { status: 301, headers: { Location: "http://[bad" } }));
     const err = await fetchHtml(URL_TARGET).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(FetchError);
+  });
+});
+
+describe("fetchHtml – cancellation and decoding", () => {
+  it("stringifies non-Error fetch rejections", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue("boom"));
+    const err = await fetchHtml(URL_TARGET).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(FetchError);
+    expect((err as FetchError).message).toContain(": boom");
+  });
+
+  it("rejects with the caller's abort reason when the caller's signal aborts", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(
+          (_url: string, init: RequestInit) =>
+            new Promise((_resolve, reject) =>
+              init.signal?.addEventListener("abort", () => reject(init.signal?.reason)),
+            ),
+        ),
+    );
+    const controller = new AbortController();
+    const reason = new Error("cancelled by caller");
+    const pending = fetchHtml(URL_TARGET, { signal: controller.signal });
+    controller.abort(reason);
+    await expect(pending).rejects.toBe(reason);
+  });
+
+  it("wraps errors in FetchError when the caller's signal is not aborted", async () => {
+    stubFetch(new TypeError("network down"));
+    const err = await fetchHtml(URL_TARGET, { signal: new AbortController().signal }).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(FetchError);
+  });
+
+  it("decodes multi-byte characters split across chunks", async () => {
+    const bytes = new TextEncoder().encode("<html><head><title>Café</title></head></html>");
+    const split = bytes.indexOf(0xc3) + 1; // inside "é"
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes.subarray(0, split));
+        controller.enqueue(bytes.subarray(split));
+        controller.close();
+      },
+    });
+    stubFetch(new Response(body, { status: 200 }));
+    const result = await fetchHtml(URL_TARGET);
+    expect(result.title).toBe("Café");
   });
 });

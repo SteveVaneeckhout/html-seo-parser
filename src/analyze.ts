@@ -20,14 +20,8 @@ export function analyze(html: string, options?: AnalyzeOptions): SeoData {
 
   const docBase = options?.baseUrl;
   const baseHref = $("base[href]").first().attr("href")?.trim();
-  let effectiveBase = docBase;
-  if (baseHref) {
-    try {
-      effectiveBase = new URL(baseHref, docBase).href;
-    } catch {
-      // Malformed <base href> — fall back to the document base.
-    }
-  }
+  // A malformed <base href> falls back to the document base.
+  const effectiveBase = (baseHref && URL.parse(baseHref, docBase)?.href) || docBase;
 
   return {
     title: extractTitle($),

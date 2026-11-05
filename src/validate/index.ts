@@ -5,7 +5,7 @@ import {
   VOCAB_VERSION,
 } from "./vocab.generated.js";
 import type { ValidationIssue, ValidationResult, ValidateOptions } from "./types.js";
-import { ancestorTypes } from "./subtypeWalk.js";
+import { ancestorsOf } from "./subtypeWalk.js";
 
 export type {
   ValidationIssue,
@@ -88,7 +88,7 @@ function validateItem(
 
   const typeNames = extractTypeNames(item).map(canonicalize);
   for (const t of typeNames) {
-    if (vocabTypes[t] === undefined) {
+    if (!vocabTypes.has(t)) {
       issues.push({
         level: "warning",
         code: "unknown-type",
@@ -99,16 +99,13 @@ function validateItem(
     }
   }
 
-  const ancestorsForItem = new Set<string>();
-  for (const t of typeNames) {
-    for (const a of ancestorTypes(t)) ancestorsForItem.add(a);
-  }
+  const ancestorsForItem = ancestorsOf(typeNames);
 
   for (const [key, rawValue] of Object.entries(item)) {
     if (key.startsWith("@") || rawValue === undefined) continue;
 
     const propName = canonicalize(key);
-    const propDef = vocabProperties[propName];
+    const propDef = vocabProperties.get(propName);
 
     if (propDef === undefined) {
       issues.push({
@@ -142,8 +139,7 @@ function validateItem(
       if (isItem(v)) {
         const nestedTypes = extractTypeNames(v).map(canonicalize);
         if (nestedTypes.length > 0 && propDef.rangeIncludes.length > 0) {
-          const ancestorsForNested = new Set<string>();
-          for (const t of nestedTypes) for (const a of ancestorTypes(t)) ancestorsForNested.add(a);
+          const ancestorsForNested = ancestorsOf(nestedTypes);
           const rangeOk = propDef.rangeIncludes.some((r) => ancestorsForNested.has(r));
           if (!rangeOk) {
             issues.push({
@@ -187,7 +183,7 @@ function isSchemaOrgItem(item: StructuredDataItem): boolean {
   // No @context: detect via @type
   for (const t of extractTypeNames(item)) {
     if (SCHEMA_PREFIX_RE.test(t)) return true;
-    if (vocabTypes[canonicalize(t)] !== undefined) return true;
+    if (vocabTypes.has(canonicalize(t))) return true;
   }
   return false;
 }

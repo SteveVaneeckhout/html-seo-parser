@@ -50,22 +50,13 @@ function classifyKind(trimmed: string): LinkKind {
   return "http";
 }
 
-function resolve(trimmed: string, baseUrl: string | undefined): string | null {
-  try {
-    return new URL(trimmed, baseUrl ?? undefined).href;
-  } catch {
-    return null;
-  }
-}
-
 function computeIsExternal(
   kind: LinkKind,
-  resolvedUrl: string | null,
+  resolved: URL | null,
   docHost: string | null,
 ): boolean | null {
-  // resolvedUrl is always a serialized URL, so re-parsing it never throws.
-  if (kind !== "http" || docHost === null || resolvedUrl === null) return null;
-  return new URL(resolvedUrl).host !== docHost;
+  if (kind !== "http" || docHost === null || resolved === null) return null;
+  return resolved.host !== docHost;
 }
 
 function detectMissingProtocol(trimmed: string): boolean {
@@ -82,7 +73,7 @@ function detectMissingProtocol(trimmed: string): boolean {
   if (/^www\./i.test(head)) return true;
   if (!DOMAIN_RE.test(head)) return false;
   const labels = head.split(".");
-  const tld = labels[labels.length - 1]!.toLowerCase();
+  const tld = labels.at(-1)!.toLowerCase();
   return tld.length >= 2 && /^[a-z]+$/.test(tld) && !TLD_DENYLIST.has(tld);
 }
 
@@ -90,14 +81,8 @@ function detectMissingProtocol(trimmed: string): boolean {
 // `<base href>`). `docUrl` is the document's own URL — links are "external" when they resolve
 // to a different host than where the page actually lives, regardless of `<base href>`.
 export function extractLinks($: CheerioAPI, resolveBase?: string, docUrl?: string): LinkEntry[] {
-  let docHost: string | null = null;
-  if (docUrl !== undefined) {
-    try {
-      docHost = new URL(docUrl).host;
-    } catch {
-      docHost = null; // invalid base URL — external status is unknowable
-    }
-  }
+  // An invalid document URL leaves external status unknowable (null).
+  const docHost = docUrl === undefined ? null : (URL.parse(docUrl)?.host ?? null);
 
   const entries: LinkEntry[] = [];
   $("a[href]").each((_i, el) => {
@@ -105,15 +90,15 @@ export function extractLinks($: CheerioAPI, resolveBase?: string, docUrl?: strin
     const href = $el.attr("href")!;
     const trimmed = href.trim();
     const kind = classifyKind(trimmed);
-    const resolvedUrl = resolve(trimmed, resolveBase);
+    const resolved = URL.parse(trimmed, resolveBase);
     entries.push({
       href,
       rel: $el.attr("rel") ?? null,
       text: $el.text().trim() || null,
       target: $el.attr("target") ?? null,
       kind,
-      isExternal: computeIsExternal(kind, resolvedUrl, docHost),
-      resolvedUrl,
+      isExternal: computeIsExternal(kind, resolved, docHost),
+      resolvedUrl: resolved?.href ?? null,
       likelyMissingProtocol: detectMissingProtocol(trimmed),
     });
   });

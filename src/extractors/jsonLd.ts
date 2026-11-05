@@ -27,15 +27,7 @@ export function extractJsonLd($: CheerioAPI): StructuredDataItem[] {
 }
 
 function toItems(value: unknown): StructuredDataItem[] {
-  if (Array.isArray(value)) {
-    const out: StructuredDataItem[] = [];
-    for (const entry of value) {
-      for (const item of toItems(entry)) {
-        out.push(item);
-      }
-    }
-    return out;
-  }
+  if (Array.isArray(value)) return value.flatMap(toItems);
   if (value !== null && typeof value === "object") {
     return [value as StructuredDataItem];
   }

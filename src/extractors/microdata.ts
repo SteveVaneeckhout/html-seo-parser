@@ -1,6 +1,7 @@
 import type { CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import type { StructuredDataItem, StructuredDataValue } from "../types.js";
+import { isElement, splitTokens } from "./dom.js";
 
 export function extractMicrodata($: CheerioAPI): StructuredDataItem[] {
   const items: StructuredDataItem[] = [];
@@ -118,20 +119,4 @@ function findById($: CheerioAPI, id: string): Element | null {
     if ($(el).attr("id") === id) found = el;
   });
   return found;
-}
-
-function splitTokens(value: string): string[] {
-  return value
-    .trim()
-    .split(/\s+/)
-    .filter((t) => t.length > 0);
-}
-
-function isElement(node: unknown): node is Element {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "type" in node &&
-    (node as { type: unknown }).type === "tag"
-  );
 }

@@ -29,6 +29,19 @@ describe("validate", () => {
     expect(result.issues.find((i) => i.code === "unknown-type")?.type).toBe("Buggle");
   });
 
+  it.each(["constructor", "toString", "__proto__", "hasOwnProperty"])(
+    "treats Object.prototype names like %j as unknown types and properties (no crash)",
+    (name) => {
+      const item = JSON.parse(
+        JSON.stringify({ "@context": "https://schema.org", "@type": "Thing", [name]: "x" }),
+      ) as StructuredDataItem;
+      item["@type"] = name;
+      const result = validate(item);
+      expect(result.issues.find((i) => i.code === "unknown-type")?.type).toBe(name);
+      expect(result.issues.find((i) => i.code === "unknown-property")?.property).toBe(name);
+    },
+  );
+
   it("warns on unknown property", () => {
     const item: StructuredDataItem = {
       "@context": "https://schema.org",

@@ -1,3 +1,4 @@
+import { isElement, splitTokens } from "./dom.js";
 export function extractMicrodata($) {
     const items = [];
     $("[itemscope]:not([itemscope] [itemscope])").each((_i, el) => {
@@ -107,16 +108,4 @@ function findById($, id) {
             found = el;
     });
     return found;
-}
-function splitTokens(value) {
-    return value
-        .trim()
-        .split(/\s+/)
-        .filter((t) => t.length > 0);
-}
-function isElement(node) {
-    return (typeof node === "object" &&
-        node !== null &&
-        "type" in node &&
-        node.type === "tag");
 }

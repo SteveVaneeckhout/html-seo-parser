@@ -135,6 +135,8 @@ export interface FetchOptions {
   userAgent?: string;
   maxRedirects?: number;
   maxSizeBytes?: number;
+  /** Cancels the request; combined with the `timeoutMs` deadline. */
+  signal?: AbortSignal;
 }
 
 export interface FetchMeta {
