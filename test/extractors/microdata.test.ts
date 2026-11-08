@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { load } from "cheerio";
-import { extractMicrodata } from "../../src/extractors/microdata.js";
+import { extractMicrodata, MAX_ITEM_DEPTH } from "../../src/extractors/microdata.js";
 
 function extract(html: string) {
   return extractMicrodata(load(html));
@@ -372,5 +372,22 @@ describe("extractMicrodata", () => {
       </div>
     `);
     expect(items[0]?.["productID"]).toBe("");
+  });
+});
+
+describe("extractMicrodata – nesting cap", () => {
+  it("stops at MAX_ITEM_DEPTH nested items with an @parseError", () => {
+    const html =
+      '<div itemscope itemtype="https://schema.org/Thing">' +
+      '<div itemprop="subjectOf" itemscope>'.repeat(MAX_ITEM_DEPTH + 10) +
+      "x";
+    let item = extract(html)[0]!;
+    for (let depth = 1; depth <= MAX_ITEM_DEPTH; depth++) {
+      item = item["subjectOf"] as typeof item;
+      expect(item["@parseError"]).toBeUndefined();
+    }
+    expect(item["subjectOf"]).toEqual({
+      "@parseError": `itemscope nesting deeper than ${MAX_ITEM_DEPTH} levels`,
+    });
   });
 });

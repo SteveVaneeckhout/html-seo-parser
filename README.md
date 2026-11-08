@@ -244,6 +244,7 @@ Failures are observable, not thrown:
 
 - An invalid `<script type="application/ld+json">` body produces an item with `@parseError` set instead of a parsed object — the rest of the page still parses.
 - A microdata `itemref` cycle inserts an `@parseError` item on the offending nested reference.
+- Microdata items nested more than 256 levels deep inside other items are replaced by an `@parseError` item.
 - Deeply nested markup, such as thousands of unclosed tags, is walked without recursion, so it can't overflow the call stack.
 
 #### RDFa coverage
@@ -295,13 +296,16 @@ interface ValidationIssue {
     | "unknown-type"
     | "unknown-property"
     | "property-not-in-domain"
-    | "range-mismatch";
+    | "range-mismatch"
+    | "nesting-too-deep";
   path: (string | number)[]; // e.g. ["jsonLd", 0, "author", "@type"]
   type?: string;
   property?: string;
   message: string;
 }
 ```
+
+Items nested more than 256 levels deep are not validated. The first such item gets a `nesting-too-deep` warning, and nothing inside it is checked.
 
 Pass `{ strict: true }` to promote warnings to errors (info-level issues such as `unknown-vocabulary` are not promoted).
 

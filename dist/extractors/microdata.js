@@ -1,14 +1,22 @@
 import { isElement, splitTokens, textContent } from "./dom.js";
+/**
+ * How deep items may nest inside items. Real pages stay far below this; the cap keeps
+ * buildItem's recursion from overflowing the call stack on hostile markup.
+ */
+export const MAX_ITEM_DEPTH = 256;
 export function extractMicrodata($) {
     const items = [];
     $("[itemscope]:not([itemscope] [itemscope])").each((_i, el) => {
-        items.push(buildItem($, el, new Set()));
+        items.push(buildItem($, el, new Set(), 0));
     });
     return items;
 }
-function buildItem($, scopeEl, memory) {
+function buildItem($, scopeEl, memory, depth) {
     if (memory.has(scopeEl)) {
         return { "@parseError": "circular itemscope reference" };
+    }
+    if (depth > MAX_ITEM_DEPTH) {
+        return { "@parseError": `itemscope nesting deeper than ${MAX_ITEM_DEPTH} levels` };
     }
     memory.add(scopeEl);
     const item = {};
@@ -51,7 +59,7 @@ function buildItem($, scopeEl, memory) {
         const hasItemscope = $(el).attr("itemscope") !== undefined;
         if (itemprop !== undefined) {
             const value = hasItemscope
-                ? buildItem($, el, memory)
+                ? buildItem($, el, memory, depth + 1)
                 : extractValue($, el);
             for (const name of splitTokens(itemprop)) {
                 (props[name] ??= []).push(value);

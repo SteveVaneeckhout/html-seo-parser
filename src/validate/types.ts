@@ -5,7 +5,8 @@ export type ValidationCode =
   | "unknown-type"
   | "unknown-property"
   | "property-not-in-domain"
-  | "range-mismatch";
+  | "range-mismatch"
+  | "nesting-too-deep";
 
 export interface ValidationIssue {
   level: ValidationLevel;

@@ -1,6 +1,11 @@
 import { types as vocabTypes, properties as vocabProperties, VOCAB_VERSION, } from "./vocab.generated.js";
 import { ancestorsOf } from "./subtypeWalk.js";
 export { VOCAB_VERSION };
+/**
+ * How deep nested items are validated. Real structured data stays far below this; the cap keeps
+ * validateItem's recursion from overflowing the call stack on hostile input.
+ */
+export const MAX_VALIDATION_DEPTH = 256;
 const SCHEMA_PREFIX_RE = /^https?:\/\/schema\.org\//i;
 const SCHEMA_HOST_RE = /^https?:\/\/schema\.org\/?$/i;
 export function validate(input, options = {}) {
@@ -9,7 +14,7 @@ export function validate(input, options = {}) {
     for (const [bucketName, items] of buckets) {
         items.forEach((item, idx) => {
             const path = bucketName === null ? [idx] : [bucketName, idx];
-            validateItem(item, path, issues);
+            validateItem(item, path, issues, 0);
         });
     }
     if (options.strict === true) {
@@ -43,7 +48,16 @@ function isStructuredData(value) {
         Array.isArray(value.microdata) &&
         Array.isArray(value.rdfa));
 }
-function validateItem(item, path, issues) {
+function validateItem(item, path, issues, depth) {
+    if (depth > MAX_VALIDATION_DEPTH) {
+        issues.push({
+            level: "warning",
+            code: "nesting-too-deep",
+            path,
+            message: `Items nest deeper than ${MAX_VALIDATION_DEPTH} levels; this item and everything inside it were not validated.`,
+        });
+        return;
+    }
     if (!isSchemaOrgItem(item)) {
         issues.push({
             level: "info",
@@ -113,7 +127,7 @@ function validateItem(item, path, issues) {
                         });
                     }
                 }
-                validateItem(v, valuePath, issues);
+                validateItem(v, valuePath, issues, depth + 1);
             }
         });
     }
@@ -121,7 +135,7 @@ function validateItem(item, path, issues) {
     if (Array.isArray(graph)) {
         graph.forEach((entry, gIdx) => {
             if (isItem(entry)) {
-                validateItem(entry, [...path, "@graph", gIdx], issues);
+                validateItem(entry, [...path, "@graph", gIdx], issues, depth + 1);
             }
         });
     }

@@ -3,17 +3,31 @@ import type { Element } from "domhandler";
 import type { StructuredDataItem, StructuredDataValue } from "../types.js";
 import { isElement, splitTokens, textContent } from "./dom.js";
 
+/**
+ * How deep items may nest inside items. Real pages stay far below this; the cap keeps
+ * buildItem's recursion from overflowing the call stack on hostile markup.
+ */
+export const MAX_ITEM_DEPTH = 256;
+
 export function extractMicrodata($: CheerioAPI): StructuredDataItem[] {
   const items: StructuredDataItem[] = [];
   $("[itemscope]:not([itemscope] [itemscope])").each((_i, el) => {
-    items.push(buildItem($, el, new Set<Element>()));
+    items.push(buildItem($, el, new Set<Element>(), 0));
   });
   return items;
 }
 
-function buildItem($: CheerioAPI, scopeEl: Element, memory: Set<Element>): StructuredDataItem {
+function buildItem(
+  $: CheerioAPI,
+  scopeEl: Element,
+  memory: Set<Element>,
+  depth: number,
+): StructuredDataItem {
   if (memory.has(scopeEl)) {
     return { "@parseError": "circular itemscope reference" };
+  }
+  if (depth > MAX_ITEM_DEPTH) {
+    return { "@parseError": `itemscope nesting deeper than ${MAX_ITEM_DEPTH} levels` };
   }
   memory.add(scopeEl);
 
@@ -60,7 +74,7 @@ function buildItem($: CheerioAPI, scopeEl: Element, memory: Set<Element>): Struc
 
     if (itemprop !== undefined) {
       const value: StructuredDataValue = hasItemscope
-        ? buildItem($, el, memory)
+        ? buildItem($, el, memory, depth + 1)
         : extractValue($, el);
       for (const name of splitTokens(itemprop)) {
         (props[name] ??= []).push(value);

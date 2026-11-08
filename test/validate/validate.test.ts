@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validate, VOCAB_VERSION } from "../../src/validate/index.js";
+import { MAX_VALIDATION_DEPTH, validate, VOCAB_VERSION } from "../../src/validate/index.js";
 import type { StructuredData, StructuredDataItem } from "../../src/index.js";
 
 describe("validate", () => {
@@ -335,5 +335,37 @@ describe("validate", () => {
     const result = validate({ "@type": "Buggle", name: "x" } as StructuredDataItem);
     expect(result.issues).toHaveLength(1);
     expect(result.issues[0]?.code).toBe("unknown-vocabulary");
+  });
+});
+
+describe("validate – nesting cap", () => {
+  function nested(levels: number): StructuredDataItem {
+    const root: StructuredDataItem = { "@context": "https://schema.org", "@type": "CreativeWork" };
+    let current = root;
+    for (let i = 0; i < levels; i++) {
+      const child: StructuredDataItem = { "@type": "CreativeWork" };
+      current["about"] = child;
+      current = child;
+    }
+    return root;
+  }
+
+  it("validates items nested up to MAX_VALIDATION_DEPTH levels", () => {
+    expect(validate(nested(MAX_VALIDATION_DEPTH)).issues).toEqual([]);
+  });
+
+  it("reports nesting-too-deep once and stops descending", () => {
+    const { valid, issues } = validate(nested(MAX_VALIDATION_DEPTH + 1000));
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.code).toBe("nesting-too-deep");
+    expect(issues[0]?.level).toBe("warning");
+    expect(issues[0]?.path).toHaveLength(1 + MAX_VALIDATION_DEPTH + 1);
+    expect(valid).toBe(true);
+  });
+
+  it("promotes nesting-too-deep to an error in strict mode", () => {
+    const { valid, issues } = validate(nested(MAX_VALIDATION_DEPTH + 1), { strict: true });
+    expect(issues.map((i) => [i.code, i.level])).toEqual([["nesting-too-deep", "error"]]);
+    expect(valid).toBe(false);
   });
 });
