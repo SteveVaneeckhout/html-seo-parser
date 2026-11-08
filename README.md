@@ -244,6 +244,7 @@ Failures are observable, not thrown:
 
 - An invalid `<script type="application/ld+json">` body produces an item with `@parseError` set instead of a parsed object — the rest of the page still parses.
 - A microdata `itemref` cycle inserts an `@parseError` item on the offending nested reference.
+- Deeply nested markup, such as thousands of unclosed tags, is walked without recursion, so it can't overflow the call stack.
 
 #### RDFa coverage
 

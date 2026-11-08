@@ -1,3 +1,4 @@
+import { textContent } from "./dom.js";
 const HEADING_SELECTOR = "h1, h2, h3, h4, h5, h6";
 export function extractHeadings($) {
     const entries = [];
@@ -8,7 +9,7 @@ export function extractHeadings($) {
         const level = parseInt(tagName.slice(1), 10);
         entries.push({
             level,
-            text: $el.text().trim(),
+            text: textContent(el).trim(),
             order: order++,
         });
     });

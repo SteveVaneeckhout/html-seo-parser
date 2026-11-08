@@ -1,4 +1,4 @@
-import { isElement, splitTokens } from "./dom.js";
+import { isElement, splitTokens, textContent } from "./dom.js";
 export function extractMicrodata($) {
     const items = [];
     $("[itemscope]:not([itemscope] [itemscope])").each((_i, el) => {
@@ -94,9 +94,9 @@ function extractValue($, el) {
         case "meter":
             return $el.attr("value") ?? "";
         case "time":
-            return $el.attr("datetime") ?? $el.text().trim();
+            return $el.attr("datetime") ?? textContent(el).trim();
         default:
-            return $el.text().trim();
+            return textContent(el).trim();
     }
 }
 function findById($, id) {

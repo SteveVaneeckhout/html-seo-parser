@@ -1,7 +1,7 @@
 import type { CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import type { StructuredDataItem, StructuredDataValue } from "../types.js";
-import { isElement, splitTokens } from "./dom.js";
+import { isElement, splitTokens, textContent } from "./dom.js";
 
 export function extractMicrodata($: CheerioAPI): StructuredDataItem[] {
   const items: StructuredDataItem[] = [];
@@ -106,9 +106,9 @@ function extractValue($: CheerioAPI, el: Element): string {
     case "meter":
       return $el.attr("value") ?? "";
     case "time":
-      return $el.attr("datetime") ?? $el.text().trim();
+      return $el.attr("datetime") ?? textContent(el).trim();
     default:
-      return $el.text().trim();
+      return textContent(el).trim();
   }
 }
 

@@ -1,3 +1,4 @@
+import { textContent } from "./dom.js";
 const SCHEME_RE = /^([a-z][a-z0-9+.-]*):/i;
 const DOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
 const TLD_DENYLIST = new Set([
@@ -84,7 +85,7 @@ export function extractLinks($, resolveBase, docUrl) {
         entries.push({
             href,
             rel: $el.attr("rel") ?? null,
-            text: $el.text().trim() || null,
+            text: textContent(el).trim() || null,
             target: $el.attr("target") ?? null,
             kind,
             isExternal: computeIsExternal(kind, resolved, docHost),

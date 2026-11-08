@@ -1,5 +1,6 @@
 import type { CheerioAPI } from "cheerio";
 import type { HeadingEntry } from "../types.js";
+import { textContent } from "./dom.js";
 
 const HEADING_SELECTOR = "h1, h2, h3, h4, h5, h6";
 
@@ -13,7 +14,7 @@ export function extractHeadings($: CheerioAPI): HeadingEntry[] {
     const level = parseInt(tagName.slice(1), 10) as 1 | 2 | 3 | 4 | 5 | 6;
     entries.push({
       level,
-      text: $el.text().trim(),
+      text: textContent(el).trim(),
       order: order++,
     });
   });

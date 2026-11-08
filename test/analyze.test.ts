@@ -617,3 +617,18 @@ describe("analyze()", () => {
     });
   });
 });
+
+describe("analyze – deep nesting", () => {
+  it("does not overflow the stack on 10,000 unclosed elements", () => {
+    const html =
+      '<div vocab="https://schema.org/" typeof="Thing" itemscope itemtype="https://schema.org/Thing">' +
+      '<h2 property="name" itemprop="name"><a href="/a">' +
+      "<span>".repeat(10_000) +
+      "deep text";
+    const r = analyze(html, { baseUrl: "https://example.test/" });
+    expect(r.headings[0]?.text).toBe("deep text");
+    expect(r.links[0]?.text).toBe("deep text");
+    expect(r.structuredData.rdfa[0]?.["https://schema.org/name"]).toBe("deep text");
+    expect(r.structuredData.microdata[0]?.["name"]).toBe("deep text");
+  });
+});

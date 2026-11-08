@@ -324,3 +324,47 @@ describe("extractRdfa", () => {
     expect(items[0]?.["https://schema.org/name"]).toBe("Object text");
   });
 });
+
+describe("extractRdfa – deep nesting", () => {
+  it("walks markup nested deeper than the call stack allows", () => {
+    // xml mode builds the deep tree in linear time; the HTML parser is quadratic in depth.
+    const depth = 50_000;
+    const html =
+      '<div vocab="https://schema.org/" typeof="Thing"><span property="name">deep</span>' +
+      "<div>".repeat(depth) +
+      '<span property="description">inner</span>' +
+      "</div>".repeat(depth) +
+      "</div>";
+    const items = extractRdfa(load(html, { xml: true }));
+    expect(items).toEqual([
+      {
+        "@type": "https://schema.org/Thing",
+        "https://schema.org/name": "deep",
+        "https://schema.org/description": "inner",
+      },
+    ]);
+  });
+
+  it("keeps document order and fills nested items after their subtree", () => {
+    const items = extract(`
+      <div vocab="https://schema.org/" typeof="Person">
+        <span property="name">Ada</span>
+        <div property="worksFor" typeof="Organization"><span property="name">Acme</span></div>
+        <span property="jobTitle">Engineer</span>
+      </div>
+      <div vocab="https://schema.org/" typeof="Thing"><span property="name">Second</span></div>
+    `);
+    expect(items).toEqual([
+      {
+        "@type": "https://schema.org/Person",
+        "https://schema.org/name": "Ada",
+        "https://schema.org/worksFor": {
+          "@type": "https://schema.org/Organization",
+          "https://schema.org/name": "Acme",
+        },
+        "https://schema.org/jobTitle": "Engineer",
+      },
+      { "@type": "https://schema.org/Thing", "https://schema.org/name": "Second" },
+    ]);
+  });
+});

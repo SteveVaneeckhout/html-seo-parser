@@ -1,7 +1,7 @@
 import type { CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import type { StructuredDataItem, StructuredDataValue } from "../types.js";
-import { isElement, splitTokens } from "./dom.js";
+import { isElement, splitTokens, textContent } from "./dom.js";
 
 interface Context {
   vocab: string | null;
@@ -9,20 +9,42 @@ interface Context {
   pendingProps: Record<string, StructuredDataValue[]> | null;
 }
 
+/** Work for the walk: visit an element, or fill in an item once its subtree is done. */
+type Task =
+  | { el: Element; ctx: Context }
+  | { item: StructuredDataItem; props: Record<string, StructuredDataValue[]> };
+
 export function extractRdfa($: CheerioAPI): StructuredDataItem[] {
   const items: StructuredDataItem[] = [];
   const ctx: Context = { vocab: null, prefixes: {}, pendingProps: null };
 
-  $.root()
-    .children()
-    .each((_i, el) => {
-      walk($, el, ctx, items);
-    });
+  // An explicit stack instead of recursion: markup can nest thousands of levels deep (unclosed
+  // tags), which would overflow the call stack. Tasks pop in document order.
+  const stack: Task[] = [];
+  const roots = $.root().children().toArray();
+  for (let i = roots.length - 1; i >= 0; i--) stack.push({ el: roots[i]!, ctx });
+
+  while (stack.length > 0) {
+    const task = stack.pop()!;
+    if ("el" in task) {
+      visit($, task.el, task.ctx, items, stack);
+    } else {
+      for (const [name, values] of Object.entries(task.props)) {
+        task.item[name] = values.length === 1 ? values[0]! : values;
+      }
+    }
+  }
 
   return items;
 }
 
-function walk($: CheerioAPI, el: Element, ctx: Context, items: StructuredDataItem[]): void {
+function visit(
+  $: CheerioAPI,
+  el: Element,
+  ctx: Context,
+  items: StructuredDataItem[],
+  stack: Task[],
+): void {
   const $el = $(el);
   const vocabAttr = $el.attr("vocab");
   const prefixAttr = $el.attr("prefix");
@@ -78,14 +100,13 @@ function walk($: CheerioAPI, el: Element, ctx: Context, items: StructuredDataIte
     pendingProps: newPendingProps ?? ctx.pendingProps,
   };
 
-  for (const child of el.children) {
-    if (isElement(child)) walk($, child, childCtx, items);
-  }
-
+  // The item is filled in after its whole subtree, so this task goes under the children.
   if (newItem !== null && newPendingProps !== null) {
-    for (const [name, values] of Object.entries(newPendingProps)) {
-      newItem[name] = values.length === 1 ? values[0]! : values;
-    }
+    stack.push({ item: newItem, props: newPendingProps });
+  }
+  for (let i = el.children.length - 1; i >= 0; i--) {
+    const child = el.children[i];
+    if (isElement(child)) stack.push({ el: child, ctx: childCtx });
   }
 }
 
@@ -116,7 +137,7 @@ function extractPropertyValue($: CheerioAPI, el: Element): string {
   const resource = $el.attr("resource");
   if (resource !== undefined) return resource;
 
-  return $el.text().trim();
+  return textContent(el).trim();
 }
 
 function resolveTerm(term: string, vocab: string | null, prefixes: Record<string, string>): string {
